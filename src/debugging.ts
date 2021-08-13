@@ -174,7 +174,7 @@ export async function requireOrderCalldataCanMatch(
   client: WyvernProtocol,
   { buy, sell }: { buy: Order; sell: Order }
 ) {
-  const result = client.wyvernExchange.orderCalldataCanMatch.callAsync(
+  const result = await client.wyvernExchange.orderCalldataCanMatch.callAsync(
     buy.calldata,
     buy.replacementPattern,
     sell.calldata,
