@@ -1,6 +1,6 @@
 import { PartialReadonlyContractAbi } from "./types";
-import { EventAbi } from "web3";
 import { AnnotatedFunctionABI } from "wyvern-js/lib/types";
+import { EventAbi } from "ethereum-types";
 
 export const getMethod = (
   abi: PartialReadonlyContractAbi,
