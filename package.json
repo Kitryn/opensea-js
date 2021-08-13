@@ -39,6 +39,7 @@
   "homepage": "https://docs.opensea.io/v1.0/reference",
   "dependencies": {
     "bignumber.js": "^9.0.1",
+    "ethereum-types": "^3.5.0",
     "ethereumjs-abi": "https://github.com/ProjectWyvern/ethereumjs-abi.git",
     "ethereumjs-util": "^7.1.0",
     "ethers": "^5.4.4",
