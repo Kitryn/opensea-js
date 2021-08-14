@@ -42,7 +42,7 @@ import {
   OPENSEA_FEE_RECIPIENT,
   OPENSEA_SELLER_BOUNTY_BASIS_POINTS,
 } from "../../src/constants";
-import BigNumber from "bignumber.js";
+import { BigNumber } from "@0x/utils";
 
 const provider = new Web3.providers.HttpProvider(MAINNET_PROVIDER_URL);
 

@@ -38,6 +38,7 @@
   },
   "homepage": "https://docs.opensea.io/v1.0/reference",
   "dependencies": {
+    "@0x/utils": "^6.4.3",
     "bignumber.js": "^9.0.1",
     "ethereum-types": "^3.5.0",
     "ethereumjs-abi": "https://github.com/ProjectWyvern/ethereumjs-abi.git",
@@ -47,8 +48,8 @@
     "isomorphic-unfetch": "^3.1.0",
     "lodash": "^4.17.4",
     "superstruct": "^0.15.2",
-    "wyvern-js": "https://github.com/Kitryn/wyvern-js#965bf3ef8db5c920ed45bdba8c89423cb0024eaf",
-    "wyvern-schemas": "https://github.com/Kitryn/wyvern-schemas#f31527d89fc2b0c52316744522f120f9e4ae6c47"
+    "wyvern-js": "https://github.com/Kitryn/wyvern-js#8b75c770dd0b4dc93d0992cae89175d46ea12bbd",
+    "wyvern-schemas": "https://github.com/Kitryn/wyvern-schemas#820b83841e8ad17844fae28f33c54b6624c88d36"
   },
   "devDependencies": {
     "@types/chai": "4.2.21",

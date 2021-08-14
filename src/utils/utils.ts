@@ -1,4 +1,4 @@
-import BigNumber from "bignumber.js";
+import { BigNumber } from "@0x/utils";
 import { WyvernProtocol } from "wyvern-js";
 import { AbiType, CallData, TxData } from "ethereum-types";
 import { ethers, Signer, BigNumber as ethersBN } from "ethers";
@@ -215,21 +215,21 @@ const SCHEMA_NAME_TO_ASSET_CONTRACT_TYPE: {
 //   }
 // };
 
-// export const confirmTransaction = async (web3: Web3, txHash: string) => {
-//   return new Promise((resolve, reject) => {
-//     track(web3, txHash, (didSucceed: boolean) => {
-//       if (didSucceed) {
-//         resolve("Transaction complete!");
-//       } else {
-//         reject(
-//           new Error(
-//             `Transaction failed :( You might have already completed this action. See more on the mainnet at etherscan.io/tx/${txHash}`
-//           )
-//         );
-//       }
-//     });
-//   });
-// };
+/**
+ *
+ * @param provider ethers.js provider
+ * @param txHash transaction hash
+ * @param timeout timeout in milliseconds, default 5 mins
+ * @returns
+ */
+export const confirmTransaction = async (
+  provider: ethers.providers.Provider,
+  txHash: string,
+  timeout: number = 5 * 60 * 1000
+) => {
+  const receipt = await provider.waitForTransaction(txHash, undefined, timeout);
+  return;
+};
 
 // TODO -- implement ethers.js version of the above
 
@@ -600,7 +600,7 @@ export async function sendRawTransaction(
         : { value: toEthersBN(new BigNumber(value)) }),
     };
     const txRes: TransactionResponse = await signer.sendTransaction(txData);
-    return txRes.hash; // this keeps us in line with previous behaviour but might be better to return the actual transactionResponse
+    return txRes.hash; // this is in line with previous behaviour which was to return the transaction hash
   } catch (error) {
     onError(error);
     throw error;

@@ -1,4 +1,4 @@
-import { BigNumber } from "bignumber.js";
+import { BigNumber } from "@0x/utils";
 import * as ethABI from "ethereumjs-abi";
 import { WyvernProtocol } from "wyvern-js";
 import { HowToCall, ReplacementEncoder, Network } from "wyvern-js/lib/types";

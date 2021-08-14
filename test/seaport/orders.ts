@@ -25,7 +25,7 @@ import {
   makeBigNumber,
 } from "../../src/utils/utils";
 import * as ordersJSONFixture from "../fixtures/orders.json";
-import { BigNumber } from "bignumber.js";
+import { BigNumber } from "@0x/utils";
 import {
   ALEX_ADDRESS,
   CRYPTO_CRYSTAL_ADDRESS,

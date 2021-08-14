@@ -1,9 +1,9 @@
-import * as Web3 from "web3";
+import { ethers, Signer, BigNumber as ethersBN } from "ethers";
 import { WyvernProtocol } from "wyvern-js";
 import * as WyvernSchemas from "wyvern-schemas";
 import { Schema } from "wyvern-schemas/dist/types";
 import * as _ from "lodash";
-import { OpenSeaAPI } from "./api";
+import { OpenSeaAPI } from "./api/api";
 import {
   CanonicalWETH,
   ERC20,
@@ -46,7 +46,6 @@ import {
   TokenStandardVersion,
 } from "./types";
 import {
-  confirmTransaction,
   makeBigNumber,
   orderToJSON,
   personalSignAsync,
@@ -62,12 +61,14 @@ import {
   getWyvernAsset,
   getTransferFeeSettings,
   rawCall,
-  promisifyCall,
   annotateERC721TransferABI,
   annotateERC20TransferABI,
   onDeprecated,
   getNonCompliantApprovalAddress,
   isContractAddress,
+  toEthersBN,
+  toBigNumberJS,
+  confirmTransaction,
 } from "./utils/utils";
 import {
   encodeAtomicizedTransfer,
@@ -84,7 +85,7 @@ import {
   MAX_ERROR_LENGTH,
   requireOrderCalldataCanMatch,
 } from "./debugging";
-import { BigNumber } from "bignumber.js";
+import { BigNumber } from "@0x/utils";
 import { EventEmitter, EventSubscription } from "fbemitter";
 import { isValidAddress } from "ethereumjs-util";
 import {
@@ -124,23 +125,23 @@ import {
   ENJIN_COIN_ADDRESS,
   MANA_ADDRESS,
 } from "./constants";
+import { FunctionAbi } from "ethereum-types";
 
 export class OpenSeaPort {
   // Web3 instance to use
-  public web3: Web3;
-  public web3ReadOnly: Web3;
+  public provider: ethers.providers.Provider;
+  public signer: Signer;
   // Logger function to use when debugging
   public logger: (arg: string) => void;
   // API instance on this seaport
   public readonly api: OpenSeaAPI;
   // Extra gwei to add to the mean gas price when making transactions
-  public gasPriceAddition = new BigNumber(3);
+  public gasPriceAddition = toBigNumberJS(ethers.utils.parseUnits("2", "gwei"));
   // Multiply gas estimate by this factor when making transactions
-  public gasIncreaseFactor = DEFAULT_GAS_INCREASE_FACTOR;
+  public gasIncreaseFactor = DEFAULT_GAS_INCREASE_FACTOR; // TODO: is this required
 
   private _networkName: Network;
   private _wyvernProtocol: WyvernProtocol;
-  private _wyvernProtocolReadOnly: WyvernProtocol;
   private _emitter: EventEmitter;
   private _wrappedNFTFactoryAddress: string;
   private _wrappedNFTLiquidationProxyAddress: string;
@@ -149,14 +150,13 @@ export class OpenSeaPort {
   /**
    * Your very own seaport.
    * Create a new instance of OpenSeaJS.
-   * @param provider Web3 Provider to use for transactions. For example:
-   *  `const provider = new Web3.providers.HttpProvider('https://mainnet.infura.io')`
+   * @param signer Ethers signer to use for transactions. MUST be connected to a provider.
    * @param apiConfig configuration options, including `networkName`
    * @param logger logger, optional, a function that will be called with debugging
    *  information
    */
   constructor(
-    provider: Web3.Provider,
+    signer: Signer,
     apiConfig: OpenSeaAPIConfig = {},
     logger?: (arg: string) => void
   ) {
@@ -167,24 +167,15 @@ export class OpenSeaPort {
 
     this._networkName = apiConfig.networkName;
 
-    const readonlyProvider = new Web3.providers.HttpProvider(
-      this._networkName == Network.Main
-        ? MAINNET_PROVIDER_URL
-        : RINKEBY_PROVIDER_URL
-    );
-
-    // Web3 Config
-    this.web3 = new Web3(provider);
-    this.web3ReadOnly = new Web3(readonlyProvider);
+    this.signer = signer;
+    if (signer.provider) {
+      this.provider = signer.provider;
+    } else {
+      throw new Error("No provider found on signer");
+    }
 
     // WyvernJS config
-    this._wyvernProtocol = new WyvernProtocol(provider, {
-      network: this._networkName,
-      gasPrice: apiConfig.gasPrice,
-    });
-
-    // WyvernJS config for readonly (optimization for infura calls)
-    this._wyvernProtocolReadOnly = new WyvernProtocol(readonlyProvider, {
+    this._wyvernProtocol = new WyvernProtocol(this.signer, {
       network: this._networkName,
       gasPrice: apiConfig.gasPrice,
     });
@@ -276,7 +267,7 @@ export class OpenSeaPort {
 
     const gasPrice = await this._computeGasPrice();
     const txHash = await sendRawTransaction(
-      this.web3,
+      this.signer,
       {
         from: accountAddress,
         to: this._wrappedNFTLiquidationProxyAddress,
@@ -347,7 +338,7 @@ export class OpenSeaPort {
 
     const gasPrice = await this._computeGasPrice();
     const txHash = await sendRawTransaction(
-      this.web3,
+      this.signer,
       {
         from: accountAddress,
         to: this._wrappedNFTLiquidationProxyAddress,
@@ -417,7 +408,7 @@ export class OpenSeaPort {
 
     const gasPrice = await this._computeGasPrice();
     const txHash = await sendRawTransaction(
-      this.web3,
+      this.signer,
       {
         from: accountAddress,
         to: this._wrappedNFTLiquidationProxyAddress,
@@ -470,7 +461,7 @@ export class OpenSeaPort {
 
     const gasPrice = await this._computeGasPrice();
     const txHash = await sendRawTransaction(
-      this.web3,
+      this.signer,
       {
         from: accountAddress,
         to: this._wrappedNFTLiquidationProxyAddress,
@@ -493,6 +484,7 @@ export class OpenSeaPort {
     );
   }
 
+  // TODO: IMPLEMENT IF REQUIRED
   /**
    * Gets the estimated cost or payout of either buying or selling NFTs to Uniswap using either purchaseAssts() or liquidateAssets()
    * @param param0 __namedParameters Object
@@ -500,55 +492,55 @@ export class OpenSeaPort {
    * @param isBuying A bool for whether the user is buying or selling
    * @param contractAddress Address of the corresponding NFT core contract for these NFTs.
    */
-  public async getQuoteFromUniswap({
-    numTokens,
-    isBuying,
-    contractAddress,
-  }: {
-    numTokens: number;
-    isBuying: boolean;
-    contractAddress: string;
-  }) {
-    // Get UniswapExchange for WrappedNFTContract for contractAddress
-    const wrappedNFTFactoryContract = this.web3.eth.contract(
-      WrappedNFTFactory as any[]
-    );
-    const wrappedNFTFactory = await wrappedNFTFactoryContract.at(
-      this._wrappedNFTFactoryAddress
-    );
-    const wrappedNFTAddress =
-      await wrappedNFTFactory.nftContractToWrapperContract(contractAddress);
-    const wrappedNFTContract = this.web3.eth.contract(WrappedNFT as any[]);
-    const wrappedNFT = await wrappedNFTContract.at(wrappedNFTAddress);
-    const uniswapFactoryContract = this.web3.eth.contract(
-      UniswapFactory as any[]
-    );
-    const uniswapFactory = await uniswapFactoryContract.at(
-      this._uniswapFactoryAddress
-    );
-    const uniswapExchangeAddress = await uniswapFactory.getExchange(
-      wrappedNFTAddress
-    );
-    const uniswapExchangeContract = this.web3.eth.contract(
-      UniswapExchange as any[]
-    );
-    const uniswapExchange = await uniswapExchangeContract.at(
-      uniswapExchangeAddress
-    );
+  // public async getQuoteFromUniswap({
+  //   numTokens,
+  //   isBuying,
+  //   contractAddress,
+  // }: {
+  //   numTokens: number;
+  //   isBuying: boolean;
+  //   contractAddress: string;
+  // }) {
+  //   // Get UniswapExchange for WrappedNFTContract for contractAddress
+  //   const wrappedNFTFactoryContract = this.web3.eth.contract(
+  //     WrappedNFTFactory as any[]
+  //   );
+  //   const wrappedNFTFactory = await wrappedNFTFactoryContract.at(
+  //     this._wrappedNFTFactoryAddress
+  //   );
+  //   const wrappedNFTAddress =
+  //     await wrappedNFTFactory.nftContractToWrapperContract(contractAddress);
+  //   const wrappedNFTContract = this.web3.eth.contract(WrappedNFT as any[]);
+  //   const wrappedNFT = await wrappedNFTContract.at(wrappedNFTAddress);
+  //   const uniswapFactoryContract = this.web3.eth.contract(
+  //     UniswapFactory as any[]
+  //   );
+  //   const uniswapFactory = await uniswapFactoryContract.at(
+  //     this._uniswapFactoryAddress
+  //   );
+  //   const uniswapExchangeAddress = await uniswapFactory.getExchange(
+  //     wrappedNFTAddress
+  //   );
+  //   const uniswapExchangeContract = this.web3.eth.contract(
+  //     UniswapExchange as any[]
+  //   );
+  //   const uniswapExchange = await uniswapExchangeContract.at(
+  //     uniswapExchangeAddress
+  //   );
 
-    // Convert desired WNFT to wei
-    const amount = WyvernProtocol.toBaseUnitAmount(
-      makeBigNumber(numTokens),
-      wrappedNFT.decimals()
-    );
+  //   // Convert desired WNFT to wei
+  //   const amount = WyvernProtocol.toBaseUnitAmount(
+  //     makeBigNumber(numTokens),
+  //     wrappedNFT.decimals()
+  //   );
 
-    // Return quote from Uniswap
-    if (isBuying) {
-      return parseInt(await uniswapExchange.getEthToTokenOutputPrice(amount));
-    } else {
-      return parseInt(await uniswapExchange.getTokenToEthInputPrice(amount));
-    }
-  }
+  //   // Return quote from Uniswap
+  //   if (isBuying) {
+  //     return parseInt(await uniswapExchange.getEthToTokenOutputPrice(amount));
+  //   } else {
+  //     return parseInt(await uniswapExchange.getTokenToEthInputPrice(amount));
+  //   }
+  // }
 
   /**
    * Wrap ETH into W-ETH.
@@ -565,31 +557,32 @@ export class OpenSeaPort {
     amountInEth: number;
     accountAddress: string;
   }) {
-    const token = WyvernSchemas.tokens[this._networkName].canonicalWrappedEther;
+    // const token = WyvernSchemas.tokens[this._networkName].canonicalWrappedEther;
 
-    const amount = WyvernProtocol.toBaseUnitAmount(
-      makeBigNumber(amountInEth),
-      token.decimals
-    );
+    // const amount = WyvernProtocol.toBaseUnitAmount(
+    //   makeBigNumber(amountInEth),
+    //   token.decimals
+    // );
 
-    this._dispatch(EventType.WrapEth, { accountAddress, amount });
+    // this._dispatch(EventType.WrapEth, { accountAddress, amount });
 
-    const gasPrice = await this._computeGasPrice();
-    const txHash = await sendRawTransaction(
-      this.web3,
-      {
-        from: accountAddress,
-        to: token.address,
-        value: amount,
-        data: encodeCall(getMethod(CanonicalWETH, "deposit"), []),
-        gasPrice,
-      },
-      (error) => {
-        this._dispatch(EventType.TransactionDenied, { error, accountAddress });
-      }
-    );
+    // const gasPrice = await this._computeGasPrice();
+    // const txHash = await sendRawTransaction(
+    //   this.web3,
+    //   {
+    //     from: accountAddress,
+    //     to: token.address,
+    //     value: amount,
+    //     data: encodeCall(getMethod(CanonicalWETH, "deposit"), []),
+    //     gasPrice,
+    //   },
+    //   (error) => {
+    //     this._dispatch(EventType.TransactionDenied, { error, accountAddress });
+    //   }
+    // );
 
-    await this._confirmTransaction(txHash, EventType.WrapEth, "Wrapping ETH");
+    // await this._confirmTransaction(txHash, EventType.WrapEth, "Wrapping ETH");
+    throw new Error("wrapEth not implemented"); // TODO
   }
 
   /**
@@ -606,37 +599,38 @@ export class OpenSeaPort {
     amountInEth: number;
     accountAddress: string;
   }) {
-    const token = WyvernSchemas.tokens[this._networkName].canonicalWrappedEther;
+    // const token = WyvernSchemas.tokens[this._networkName].canonicalWrappedEther;
 
-    const amount = WyvernProtocol.toBaseUnitAmount(
-      makeBigNumber(amountInEth),
-      token.decimals
-    );
+    // const amount = WyvernProtocol.toBaseUnitAmount(
+    //   makeBigNumber(amountInEth),
+    //   token.decimals
+    // );
 
-    this._dispatch(EventType.UnwrapWeth, { accountAddress, amount });
+    // this._dispatch(EventType.UnwrapWeth, { accountAddress, amount });
 
-    const gasPrice = await this._computeGasPrice();
-    const txHash = await sendRawTransaction(
-      this.web3,
-      {
-        from: accountAddress,
-        to: token.address,
-        value: 0,
-        data: encodeCall(getMethod(CanonicalWETH, "withdraw"), [
-          amount.toString(),
-        ]),
-        gasPrice,
-      },
-      (error) => {
-        this._dispatch(EventType.TransactionDenied, { error, accountAddress });
-      }
-    );
+    // const gasPrice = await this._computeGasPrice();
+    // const txHash = await sendRawTransaction(
+    //   this.web3,
+    //   {
+    //     from: accountAddress,
+    //     to: token.address,
+    //     value: 0,
+    //     data: encodeCall(getMethod(CanonicalWETH, "withdraw"), [
+    //       amount.toString(),
+    //     ]),
+    //     gasPrice,
+    //   },
+    //   (error) => {
+    //     this._dispatch(EventType.TransactionDenied, { error, accountAddress });
+    //   }
+    // );
 
-    await this._confirmTransaction(
-      txHash,
-      EventType.UnwrapWeth,
-      "Unwrapping W-ETH"
-    );
+    // await this._confirmTransaction(
+    //   txHash,
+    //   EventType.UnwrapWeth,
+    //   "Unwrapping W-ETH"
+    // );
+    throw new Error("unwrapWeth not implemented"); // TODO
   }
 
   /**
@@ -1731,12 +1725,12 @@ export class OpenSeaPort {
     const data = encodeTransferCall(abi, fromAddress, toAddress);
 
     try {
-      const gas = await estimateGas(this._getClientsForRead(retries).web3, {
+      const gas = await estimateGas(this._getClientsForRead(retries).provider, {
         from,
         to: abi.target,
         data,
       });
-      return gas > 0;
+      return gas.gt(0);
     } catch (error) {
       if (retries <= 0) {
         console.error(error);
@@ -1975,14 +1969,17 @@ export class OpenSeaPort {
       // ERC20 or ERC1155 (non-Enjin)
 
       const abi = schema.functions.countOf(wyAsset);
-      const contract = this._getClientsForRead(retries)
-        .web3.eth.contract([abi as Web3.FunctionAbi])
-        .at(abi.target);
+      const contract = new ethers.Contract(
+        abi.target,
+        [abi as FunctionAbi],
+        this._getClientsForRead(retries).provider
+      );
+
       const inputValues = abi.inputs
         .filter((x) => x.value !== undefined)
         .map((x) => x.value);
-      const count = await promisifyCall<BigNumber>((c) =>
-        contract[abi.name].call(accountAddress, ...inputValues, c)
+      const count = toBigNumberJS(
+        ethersBN.from(await contract[abi.name](accountAddress, ...inputValues))
       );
 
       if (count !== undefined) {
@@ -1992,18 +1989,21 @@ export class OpenSeaPort {
       // ERC721 asset
 
       const abi = schema.functions.ownerOf(wyAsset);
-      const contract = this._getClientsForRead(retries)
-        .web3.eth.contract([abi as Web3.FunctionAbi])
-        .at(abi.target);
+
+      const contract = new ethers.Contract(
+        abi.target,
+        [abi as FunctionAbi],
+        this._getClientsForRead(retries).provider
+      );
+
       if (abi.inputs.filter((x) => x.value === undefined)[0]) {
         throw new Error(
           "Missing an argument for finding the owner of this asset"
         );
       }
       const inputValues = abi.inputs.map((i) => i.value.toString());
-      const owner = await promisifyCall<string>((c) =>
-        contract[abi.name].call(...inputValues, c)
-      );
+      const owner: string = await contract[abi.name](...inputValues);
+
       if (owner) {
         return owner.toLowerCase() == accountAddress.toLowerCase()
           ? new BigNumber(1)
@@ -2228,8 +2228,11 @@ export class OpenSeaPort {
    * Will be slightly above the result of estimateGas to make it more reliable
    * @param estimation The result of estimateGas for a transaction
    */
-  public _correctGasAmount(estimation: number): number {
-    return Math.ceil(estimation * this.gasIncreaseFactor);
+  public _correctGasAmount(estimation: BigNumber): BigNumber {
+    // return Math.ceil(estimation * this.gasIncreaseFactor);
+    return estimation
+      .times(this.gasIncreaseFactor)
+      .integerValue(BigNumber.ROUND_CEIL);
   }
 
   /**
@@ -2249,7 +2252,7 @@ export class OpenSeaPort {
       metadata = NULL_BLOCK_HASH,
     }: { buy: Order; sell: Order; accountAddress: string; metadata?: string },
     retries = 1
-  ): Promise<number | undefined> {
+  ): Promise<BigNumber | undefined> {
     let value;
     if (
       buy.maker.toLowerCase() == accountAddress.toLowerCase() &&
@@ -2435,16 +2438,16 @@ export class OpenSeaPort {
 
     const gasPrice = await this._computeGasPrice();
     const txnData: any = { from: accountAddress };
-    const gasEstimate =
-      await this._wyvernProtocolReadOnly.wyvernProxyRegistry.registerProxy.estimateGasAsync(
-        txnData
-      );
+    // const gasEstimate =
+    //   await this._wyvernProtocolReadOnly.wyvernProxyRegistry.registerProxy.estimateGasAsync(
+    //     txnData
+    //   );
     const transactionHash =
       await this._wyvernProtocol.wyvernProxyRegistry.registerProxy.sendTransactionAsync(
         {
           ...txnData,
           gasPrice,
-          gas: this._correctGasAmount(gasEstimate),
+          // gas: this._correctGasAmount(gasEstimate),
         }
       );
 
@@ -4081,7 +4084,7 @@ export class OpenSeaPort {
     try {
       // Typescript splat doesn't typecheck
       const gasEstimate =
-        await this._wyvernProtocolReadOnly.wyvernExchange.atomicMatch_.estimateGasAsync(
+        await this._getClientsForRead().wyvernProtocol.wyvernExchange.atomicMatch_.estimateGasAsync(
           args[0],
           args[1],
           args[2],
@@ -4216,22 +4219,26 @@ export class OpenSeaPort {
    * @param retries current retry value
    */
   private _getClientsForRead(retries = 1): {
-    web3: Web3;
+    provider: ethers.providers.Provider;
     wyvernProtocol: WyvernProtocol;
   } {
-    if (retries > 0) {
-      // Use injected provider by default
-      return {
-        web3: this.web3,
-        wyvernProtocol: this._wyvernProtocol,
-      };
-    } else {
-      // Use provided provider as fallback
-      return {
-        web3: this.web3ReadOnly,
-        wyvernProtocol: this._wyvernProtocolReadOnly,
-      };
-    }
+    return {
+      provider: this.provider,
+      wyvernProtocol: this._wyvernProtocol,
+    };
+    // if (retries > 0) {
+    //   // Use injected provider by default
+    //   return {
+    //     web3: this.web3,
+    //     wyvernProtocol: this._wyvernProtocol,
+    //   };
+    // } else {
+    //   // Use provided provider as fallback
+    //   return {
+    //     web3: this.web3ReadOnly,
+    //     wyvernProtocol: this._wyvernProtocolReadOnly,
+    //   };
+    // }
   }
 
   private async _confirmTransaction(
@@ -4264,7 +4271,7 @@ export class OpenSeaPort {
     // Normal wallet
     try {
       this._dispatch(EventType.TransactionCreated, transactionEventData);
-      await confirmTransaction(this.web3, transactionHash);
+      await confirmTransaction(this.provider, transactionHash);
       this.logger(`Transaction succeeded: ${description}`);
       this._dispatch(EventType.TransactionConfirmed, transactionEventData);
     } catch (error) {
