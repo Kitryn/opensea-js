@@ -1,8 +1,10 @@
 import BigNumber from "bignumber.js";
 import { WyvernProtocol } from "wyvern-js";
+import { AbiType, CallData, TxData } from "ethereum-types";
+import { ethers, Signer, BigNumber as ethersBN } from "ethers";
+import { TransactionResponse } from "@ethersproject/abstract-provider";
 import * as ethUtil from "ethereumjs-util";
 import * as _ from "lodash";
-import * as Web3 from "web3";
 import {
   AnnotatedFunctionABI,
   FunctionInputKind,
@@ -31,10 +33,10 @@ import {
   OrderSide,
   SaleKind,
   Transaction,
-  TxnCallback,
+  // TxnCallback,
   UnhashedOrder,
   UnsignedOrder,
-  Web3Callback,
+  // Web3Callback,
   WyvernAsset,
   WyvernBundle,
   WyvernFTAsset,
@@ -51,6 +53,20 @@ import {
 import { proxyABI } from "../abi/Proxy";
 
 export { WyvernProtocol };
+
+/**
+ * Helper functions for BigNumber validation
+ * We use bignumber.js in this code base. Ethers has their own BN representation however.
+ */
+export function toEthersBN(val: BigNumber): ethersBN {
+  return ethersBN.from(val.toFixed());
+}
+
+export function toBigNumberJS(val: ethersBN): BigNumber {
+  return new BigNumber(val.toString());
+}
+
+// ===========
 
 export const annotateERC721TransferABI = (
   asset: WyvernNFTAsset
@@ -74,7 +90,7 @@ export const annotateERC721TransferABI = (
   outputs: [],
   payable: false,
   stateMutability: StateMutability.Nonpayable,
-  type: Web3.AbiType.Function,
+  type: AbiType.Function,
 });
 
 export const annotateERC20TransferABI = (
@@ -105,7 +121,7 @@ export const annotateERC20TransferABI = (
   ],
   payable: false,
   stateMutability: StateMutability.Nonpayable,
-  type: Web3.AbiType.Function,
+  type: AbiType.Function,
 });
 
 const SCHEMA_NAME_TO_ASSET_CONTRACT_TYPE: {
@@ -120,23 +136,23 @@ const SCHEMA_NAME_TO_ASSET_CONTRACT_TYPE: {
 
 // OTHER
 
-const txCallbacks: { [key: string]: TxnCallback[] } = {};
+// const txCallbacks: { [key: string]: TxnCallback[] } = {};
 
 /**
  * Promisify a callback-syntax web3 function
  * @param inner callback function that accepts a Web3 callback function and passes
  * it to the Web3 function
  */
-async function promisify<T>(inner: (fn: Web3Callback<T>) => void) {
-  return new Promise<T>((resolve, reject) =>
-    inner((err, res) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(res);
-    })
-  );
-}
+// async function promisify<T>(inner: (fn: Web3Callback<T>) => void) {
+//   return new Promise<T>((resolve, reject) =>
+//     inner((err, res) => {
+//       if (err) {
+//         reject(err);
+//       }
+//       resolve(res);
+//     })
+//   );
+// }
 
 /**
  * Promisify a call a method on a contract,
@@ -147,73 +163,75 @@ async function promisify<T>(inner: (fn: Web3Callback<T>) => void) {
  * and returns a Web3 Contract's call result, e.g. `c => erc721.ownerOf(3, c)`
  * @param onError callback when user denies transaction
  */
-export async function promisifyCall<T>(
-  callback: (fn: Web3Callback<T>) => void,
-  onError?: (error: Error) => void
-): Promise<T | undefined> {
-  try {
-    const result: any = await promisify<T>(callback);
-    if (result == "0x") {
-      // Geth compatibility
-      return undefined;
-    }
-    return result as T;
-  } catch (error) {
-    // Probably method not found, and web3 is a Parity node
-    if (onError) {
-      onError(error);
-    } else {
-      console.error(error);
-    }
-    return undefined;
-  }
-}
+// export async function promisifyCall<T>(
+//   callback: (fn: Web3Callback<T>) => void,
+//   onError?: (error: Error) => void
+// ): Promise<T | undefined> {
+//   try {
+//     const result: any = await promisify<T>(callback);
+//     if (result == "0x") {
+//       // Geth compatibility
+//       return undefined;
+//     }
+//     return result as T;
+//   } catch (error) {
+//     // Probably method not found, and web3 is a Parity node
+//     if (onError) {
+//       onError(error);
+//     } else {
+//       console.error(error);
+//     }
+//     return undefined;
+//   }
+// }
 
-const track = (web3: Web3, txHash: string, onFinalized: TxnCallback) => {
-  if (txCallbacks[txHash]) {
-    txCallbacks[txHash].push(onFinalized);
-  } else {
-    txCallbacks[txHash] = [onFinalized];
-    const poll = async () => {
-      const tx = await promisify<Web3.Transaction>((c) =>
-        web3.eth.getTransaction(txHash, c)
-      );
-      if (tx && tx.blockHash && tx.blockHash !== NULL_BLOCK_HASH) {
-        const receipt = await promisify<Web3.TransactionReceipt | null>((c) =>
-          web3.eth.getTransactionReceipt(txHash, c)
-        );
-        if (!receipt) {
-          // Hack: assume success if no receipt
-          console.warn("No receipt found for ", txHash);
-        }
-        const status = receipt
-          ? parseInt((receipt.status || "0").toString()) == 1
-          : true;
-        txCallbacks[txHash].map((f) => f(status));
-        delete txCallbacks[txHash];
-      } else {
-        setTimeout(poll, 1000);
-      }
-    };
-    poll().catch();
-  }
-};
+// const track = (web3: Web3, txHash: string, onFinalized: TxnCallback) => {
+//   if (txCallbacks[txHash]) {
+//     txCallbacks[txHash].push(onFinalized);
+//   } else {
+//     txCallbacks[txHash] = [onFinalized];
+//     const poll = async () => {
+//       const tx = await promisify<Web3.Transaction>((c) =>
+//         web3.eth.getTransaction(txHash, c)
+//       );
+//       if (tx && tx.blockHash && tx.blockHash !== NULL_BLOCK_HASH) {
+//         const receipt = await promisify<Web3.TransactionReceipt | null>((c) =>
+//           web3.eth.getTransactionReceipt(txHash, c)
+//         );
+//         if (!receipt) {
+//           // Hack: assume success if no receipt
+//           console.warn("No receipt found for ", txHash);
+//         }
+//         const status = receipt
+//           ? parseInt((receipt.status || "0").toString()) == 1
+//           : true;
+//         txCallbacks[txHash].map((f) => f(status));
+//         delete txCallbacks[txHash];
+//       } else {
+//         setTimeout(poll, 1000);
+//       }
+//     };
+//     poll().catch();
+//   }
+// };
 
-export const confirmTransaction = async (web3: Web3, txHash: string) => {
-  return new Promise((resolve, reject) => {
-    track(web3, txHash, (didSucceed: boolean) => {
-      if (didSucceed) {
-        resolve("Transaction complete!");
-      } else {
-        reject(
-          new Error(
-            `Transaction failed :( You might have already completed this action. See more on the mainnet at etherscan.io/tx/${txHash}`
-          )
-        );
-      }
-    });
-  });
-};
+// export const confirmTransaction = async (web3: Web3, txHash: string) => {
+//   return new Promise((resolve, reject) => {
+//     track(web3, txHash, (didSucceed: boolean) => {
+//       if (didSucceed) {
+//         resolve("Transaction complete!");
+//       } else {
+//         reject(
+//           new Error(
+//             `Transaction failed :( You might have already completed this action. See more on the mainnet at etherscan.io/tx/${txHash}`
+//           )
+//         );
+//       }
+//     });
+//   });
+// };
+
+// TODO -- implement ethers.js version of the above
 
 export const assetFromJSON = (asset: any): OpenSeaAsset => {
   const isAnimated = asset.image_url && asset.image_url.endsWith(".gif");
@@ -513,28 +531,13 @@ export const orderToJSON = (order: Order): OrderJSON => {
  * @returns A signature if provider can sign, otherwise null
  */
 export async function personalSignAsync(
-  web3: Web3,
-  message: string,
-  signerAddress: string
+  signer: Signer,
+  message: string
 ): Promise<ECSignature> {
-  const signature = await promisify<Web3.JSONRPCResponsePayload>((c) =>
-    web3.currentProvider.sendAsync(
-      {
-        method: "personal_sign",
-        params: [message, signerAddress],
-        from: signerAddress,
-        id: new Date().getTime(),
-      } as any,
-      c
-    )
-  );
-
-  const error = (signature as any).error;
-  if (error) {
-    throw new Error(error);
-  }
-
-  return parseSignatureHex(signature.result);
+  // https://docs.ethers.io/v5/api/signer/#Signer-signMessage regarding strings
+  // Will throw if message is not a valid hex string
+  const signature = await signer.signMessage(ethers.utils.arrayify(message));
+  return parseSignatureHex(signature);
 }
 
 /**
@@ -543,10 +546,10 @@ export async function personalSignAsync(
  * @param address input address
  */
 export async function isContractAddress(
-  web3: Web3,
+  provider: ethers.providers.Provider,
   address: string
 ): Promise<boolean> {
-  const code = await promisify<string>((c) => web3.eth.getCode(address, c));
+  const code = await provider.getCode(address);
   return code !== "0x";
 }
 
@@ -554,12 +557,16 @@ export async function isContractAddress(
  * Special fixes for making BigNumbers using web3 results
  * @param arg An arg or the result of a web3 call to turn into a BigNumber
  */
-export function makeBigNumber(arg: number | string | BigNumber): BigNumber {
+export function makeBigNumber(
+  arg: number | string | BigNumber | ethersBN
+): BigNumber {
   // Zero sometimes returned as 0x from contracts
   if (arg === "0x") {
     arg = 0;
   }
+
   // fix "new BigNumber() number type has more than 15 significant digits"
+  // this method is also present on ethersBN, so this will help cast it
   arg = arg.toString();
   return new BigNumber(arg);
 }
@@ -576,30 +583,24 @@ export function makeBigNumber(arg: number | string | BigNumber): BigNumber {
  * @param onError callback when user denies transaction
  */
 export async function sendRawTransaction(
-  web3: Web3,
-  { from, to, data, gasPrice, value = 0, gas }: Web3.TxData,
+  signer: Signer,
+  { from, to, data, gasPrice, value = 0 }: TxData,
   onError: (error: Error) => void
 ): Promise<string> {
-  if (gas == null) {
-    // This gas cannot be increased due to an ethjs error
-    gas = await estimateGas(web3, { from, to, data, value });
-  }
-
   try {
-    const txHashRes = await promisify<string>((c) =>
-      web3.eth.sendTransaction(
-        {
-          from,
-          to,
-          value,
-          data,
-          gas,
-          gasPrice,
-        },
-        c
-      )
-    );
-    return txHashRes.toString();
+    const txData = {
+      from,
+      to,
+      data,
+      ...(gasPrice == null
+        ? {}
+        : { gasPrice: toEthersBN(new BigNumber(gasPrice)) }),
+      ...(value == 0 || value == null
+        ? {}
+        : { value: toEthersBN(new BigNumber(value)) }),
+    };
+    const txRes: TransactionResponse = await signer.sendTransaction(txData);
+    return txRes.hash; // this keeps us in line with previous behaviour but might be better to return the actual transactionResponse
   } catch (error) {
     onError(error);
     throw error;
@@ -617,21 +618,13 @@ export async function sendRawTransaction(
  * @param onError callback when user denies transaction
  */
 export async function rawCall(
-  web3: Web3,
-  { from, to, data }: Web3.CallData,
+  provider: ethers.providers.Provider,
+  { from, to, data }: CallData,
   onError?: (error: Error) => void
 ): Promise<string> {
   try {
-    const result = await promisify<string>((c) =>
-      web3.eth.call(
-        {
-          from,
-          to,
-          data,
-        },
-        c
-      )
-    );
+    const result = await provider.call({ from, to, data });
+
     return result;
   } catch (error) {
     // Probably method not found, and web3 is a Parity node
@@ -652,31 +645,29 @@ export async function rawCall(
  * @param value value in ETH to send with data
  */
 export async function estimateGas(
-  web3: Web3,
-  { from, to, data, value = 0 }: Web3.TxData
-): Promise<number> {
-  const amount = await promisify<number>((c) =>
-    web3.eth.estimateGas(
-      {
-        from,
-        to,
-        value,
-        data,
-      },
-      c
-    )
-  );
+  provider: ethers.providers.Provider,
+  { from, to, data, value = 0 }: TxData
+): Promise<BigNumber> {
+  const bn = toEthersBN(new BigNumber(value));
+  const amount = await provider.estimateGas({
+    from,
+    to,
+    value: bn,
+    data,
+  });
 
-  return amount;
+  return toBigNumberJS(amount);
 }
 
 /**
  * Get mean gas price for sending a txn, in wei
  * @param web3 Web3 instance
  */
-export async function getCurrentGasPrice(web3: Web3): Promise<BigNumber> {
-  const meanGas = await promisify<BigNumber>((c) => web3.eth.getGasPrice(c));
-  return meanGas;
+export async function getCurrentGasPrice(
+  provider: ethers.providers.Provider
+): Promise<BigNumber> {
+  const meanGas = await provider.getGasPrice();
+  return toBigNumberJS(meanGas);
 }
 
 /**
@@ -685,7 +676,7 @@ export async function getCurrentGasPrice(web3: Web3): Promise<BigNumber> {
  * @param asset The asset to check for transfer fees
  */
 export async function getTransferFeeSettings(
-  web3: Web3,
+  provider: ethers.providers.Provider,
   {
     asset,
     accountAddress,
@@ -699,13 +690,16 @@ export async function getTransferFeeSettings(
 
   if (asset.tokenAddress.toLowerCase() == ENJIN_ADDRESS.toLowerCase()) {
     // Enjin asset
-    const feeContract = web3.eth
-      .contract(ERC1155 as any)
-      .at(asset.tokenAddress);
-
-    const params = await promisifyCall<any[]>((c) =>
-      feeContract.transferSettings(asset.tokenId, { from: accountAddress }, c)
+    const feeContract = new ethers.Contract(
+      asset.tokenAddress,
+      ERC1155,
+      provider
     );
+
+    const params = await feeContract.functions.transferSettings(asset.tokenId, {
+      from: accountAddress,
+    });
+
     if (params) {
       transferFee = makeBigNumber(params[3]);
       if (params[2] == 0) {
@@ -811,7 +805,9 @@ export function estimateCurrentPrice(
     exactPrice = exactPrice.times(+takerRelayerFee / INVERSE_BASIS_POINT + 1);
   }
 
-  return shouldRoundUp ? exactPrice.ceil() : exactPrice;
+  return shouldRoundUp
+    ? exactPrice.integerValue(BigNumber.ROUND_CEIL)
+    : exactPrice;
 }
 
 /**
@@ -941,38 +937,39 @@ export function assignOrdersToSides(
   return { buy, sell };
 }
 
+// Was broken in original code, commented out as not used
 // BROKEN
 // TODO fix this calldata for buy orders
-async function canSettleOrder(
-  client: OpenSeaPort,
-  order: Order,
-  matchingOrder: Order
-): Promise<boolean> {
-  // HACK that doesn't always work
-  //  to change null address to 0x1111111... for replacing calldata
-  const calldata =
-    order.calldata.slice(0, 98) +
-    "1111111111111111111111111111111111111111" +
-    order.calldata.slice(138);
+// async function canSettleOrder(
+//   client: OpenSeaPort,
+//   order: Order,
+//   matchingOrder: Order
+// ): Promise<boolean> {
+//   // HACK that doesn't always work
+//   //  to change null address to 0x1111111... for replacing calldata
+//   const calldata =
+//     order.calldata.slice(0, 98) +
+//     "1111111111111111111111111111111111111111" +
+//     order.calldata.slice(138);
 
-  const seller =
-    order.side == OrderSide.Buy ? matchingOrder.maker : order.maker;
-  const proxy = await client._getProxy(seller);
-  if (!proxy) {
-    console.warn(`No proxy found for seller ${seller}`);
-    return false;
-  }
-  const contract = client.web3.eth.contract([proxyABI]).at(proxy);
-  return promisify<boolean>((c) =>
-    contract.proxy.call(
-      order.target,
-      order.howToCall,
-      calldata,
-      { from: seller },
-      c
-    )
-  );
-}
+//   const seller =
+//     order.side == OrderSide.Buy ? matchingOrder.maker : order.maker;
+//   const proxy = await client._getProxy(seller);
+//   if (!proxy) {
+//     console.warn(`No proxy found for seller ${seller}`);
+//     return false;
+//   }
+//   const contract = client.web3.eth.contract([proxyABI]).at(proxy);
+//   return promisify<boolean>((c) =>
+//     contract.proxy.call(
+//       order.target,
+//       order.howToCall,
+//       calldata,
+//       { from: seller },
+//       c
+//     )
+//   );
+// }
 
 /**
  * Delay using setTimeout
@@ -987,14 +984,11 @@ export async function delay(ms: number) {
  * formatted for Wyvern and OpenSea
  * @param address input address
  */
-export function validateAndFormatWalletAddress(
-  web3: Web3,
-  address: string
-): string {
+export function validateAndFormatWalletAddress(address: string): string {
   if (!address) {
     throw new Error("No wallet address found");
   }
-  if (!web3.isAddress(address)) {
+  if (!ethers.utils.isAddress(address)) {
     throw new Error("Invalid wallet address");
   }
   if (address == NULL_ADDRESS) {
@@ -1016,20 +1010,20 @@ export function onDeprecated(msg: string) {
  * @param erc721Contract contract to check
  */
 export async function getNonCompliantApprovalAddress(
-  erc721Contract: Web3.ContractInstance,
+  erc721Contract: ethers.Contract,
   tokenId: string,
   accountAddress: string
 ): Promise<string | undefined> {
-  const results = await Promise.all([
-    // CRYPTOKITTIES check
-    promisifyCall<string>((c) =>
-      erc721Contract.kittyIndexToApproved.call(tokenId, c)
-    ),
-    // Etherbots check
-    promisifyCall<string>((c) =>
-      erc721Contract.partIndexToApproved.call(tokenId, c)
-    ),
-  ]);
+  const results = (
+    await Promise.allSettled([
+      // CRYPTOKITTIES check
+      erc721Contract.kittyIndexToApproved(tokenId),
+      // Etherbots check
+      erc721Contract.partIndexToApproved(tokenId),
+    ])
+  ).filter(
+    (res) => res.status === "fulfilled"
+  ) as PromiseFulfilledResult<any>[];
 
-  return _.compact(results)[0];
+  return _.compact(results.map((res) => res.value))[0];
 }
