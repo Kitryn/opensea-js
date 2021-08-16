@@ -1,4 +1,4 @@
-import { OrderSide } from "src/types";
+import { OrderSide } from "../types";
 import { create, Struct } from "superstruct";
 import { ApiError } from "./query-types";
 import {
