@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "message": "canceling statement due to statement timeout\n",
+      "locations": [{ "line": 9, "column": 7 }],
+      "path": ["archetype", "asset", "assetOwners"]
+    }
+  ],
+  "data": {
+    "archetype": {
+      "asset": {
+        "assetContract": {},
+        "assetOwners": null,
+        "isListable": false,
+        "name": "Wrapped Ether",
+        "tokenId": "0",
+        "assetEventData": { "lastSale": null },
+        "traits": { "edges": [] }
+      }
+    },
+    "tradeSummary": { "bestAsk": null, "bestBid": null }
+  }
+}

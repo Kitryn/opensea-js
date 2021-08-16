@@ -85,3 +85,25 @@ export const ALEX_ADDRESS_2 = "0x431e44389a003f0ec6e83b3578db5075a44ac523";
 export const DEVIN_ADDRESS = "0x0239769a1adf4def9f07da824b80b9c4fcb59593";
 export const DAN_ADDRESS = "0x530cf036ed4fa58f7301a9c788c9806624cefd19";
 export const DAN_DAPPER_ADDRESS = "0x4819352bd7fadcCFAA8A2cDA4b2825a9ec51417c";
+
+export enum CollectionSlug {
+  hashmasks = "hashmasks",
+  mooncats = "wrapped-mooncatsrescue",
+  gan_v2 = "bastard-gan-punks-v2",
+  waifusion = "waifusion",
+  chubbies = "chubbies",
+  crypteriors = "crypteriors",
+  foxpunkjrs = "foxpunk-jrs",
+}
+
+export enum ContractAddress {
+  hashmasks = "0xc2c747e0f7004f9e8817db2ca4997657a7746928",
+  mooncats = "0x7c40c393dc0f283f318791d746d894ddd3693572",
+  gan_v2 = "0x31385d3520bced94f77aae104b406994d8f2168c",
+  waifusion = "0x2216d47494E516d8206B70FCa8585820eD3C4946",
+  chubbies = "0x1db61fc42a843bad4d91a2d788789ea4055b8613",
+  maskSushi = "0xfd38565ef22299d491055f0c508f62dd9a669f0f",
+  weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  crypteriors = "0x417cf58dC18edd17025689D13AF2b85F403E130C",
+  foxpunkjrs = "0x9efa7962ccb25884587526c0ce8bffab2622976b",
+}

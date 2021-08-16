@@ -26,6 +26,7 @@ import {
   ORDER_MATCHING_LATENCY_SECONDS,
 } from "../../src/constants";
 import { ethers } from "ethers";
+import { createGetAssetQuery } from "../../src/api/query-builder";
 
 const provider = new ethers.providers.JsonRpcProvider(MAINNET_PROVIDER_URL);
 const signer = new ethers.VoidSigner(
@@ -342,4 +343,5 @@ describe("api", () => {
   //     // assert.include(error.message, "Order failed exchange validation")
   //   }
   // });
+
 });

@@ -22,6 +22,7 @@ export class ApiError extends Error {
 
   constructor(message: string, stack?: string, data?: any) {
     super(message);
+    Object.setPrototypeOf(this, ApiError.prototype);
     this.name = "ApiError";
     this.data = data; // can be undefined
 
