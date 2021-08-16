@@ -1277,8 +1277,11 @@ export class OpenSeaPort {
     schemaName?: WyvernSchemaName;
   }): Promise<string | null> {
     const schema = this._getSchema(schemaName);
-    const tokenContract = this.web3.eth.contract(tokenAbi as any[]);
-    const contract = await tokenContract.at(tokenAddress);
+    const contractInstance = await new ethers.Contract(
+      tokenAddress,
+      tokenAbi,
+      this.signer
+    );
 
     if (!proxyAddress) {
       proxyAddress = (await this._getProxy(accountAddress)) || undefined;
@@ -1290,11 +1293,17 @@ export class OpenSeaPort {
     const approvalAllCheck = async () => {
       // NOTE:
       // Use this long way of calling so we can check for method existence on a bool-returning method.
-      const isApprovedForAllRaw = await rawCall(this.web3ReadOnly, {
+      const data = contractInstance.interface.encodeFunctionData(
+        "isApprovedForAll",
+        [accountAddress, proxyAddress]
+      );
+      // If this errors, rawCall returns "0x" which parses to NaN
+      const isApprovedForAllRaw = await rawCall(this.provider, {
         from: accountAddress,
-        to: contract.address,
-        data: contract.isApprovedForAll.getData(accountAddress, proxyAddress),
+        to: contractInstance.address,
+        data,
       });
+
       return parseInt(isApprovedForAllRaw);
     };
     const isApprovedForAll = await approvalAllCheck();
@@ -1325,12 +1334,16 @@ export class OpenSeaPort {
         });
 
         const gasPrice = await this._computeGasPrice();
+        const data = contractInstance.interface.encodeFunctionData(
+          "setApprovalForAll",
+          [proxyAddress, true]
+        );
         const txHash = await sendRawTransaction(
-          this.web3,
+          this.signer,
           {
             from: accountAddress,
-            to: contract.address,
-            data: contract.setApprovalForAll.getData(proxyAddress, true),
+            to: contractInstance.address,
+            data,
             gasPrice,
           },
           (error) => {
@@ -1588,9 +1601,9 @@ export class OpenSeaPort {
    * Gets the price for the order using the contract
    * @param order The order to calculate the price for
    */
-  public async getCurrentPrice(order: Order) {
+  public async getCurrentPrice(order: Order): Promise<BigNumber> {
     const currentPrice =
-      await this._wyvernProtocolReadOnly.wyvernExchange.calculateCurrentPrice_.callAsync(
+      await this._wyvernProtocol.wyvernExchange.calculateCurrentPrice_.callAsync(
         [
           order.exchange,
           order.maker,
@@ -2360,7 +2373,7 @@ export class OpenSeaPort {
     fromAddress: string;
     toAddress: string;
     schemaName?: WyvernSchemaName;
-  }): Promise<number> {
+  }): Promise<BigNumber> {
     const schemaNames = assets.map((asset) => asset.schemaName || schemaName);
     const wyAssets = assets.map((asset) =>
       getWyvernAsset(this._getSchema(asset.schemaName), asset)
@@ -2387,7 +2400,7 @@ export class OpenSeaPort {
       this._networkName
     );
 
-    return estimateGas(this.web3, {
+    return estimateGas(this.provider, {
       from: fromAddress,
       to: proxyAddress,
       data: encodeProxyCall(target, HowToCall.DelegateCall, calldata),
@@ -2405,7 +2418,7 @@ export class OpenSeaPort {
     retries = 0
   ): Promise<string | null> {
     let proxyAddress: string | null =
-      await this._wyvernProtocolReadOnly.wyvernProxyRegistry.proxies.callAsync(
+      await this._wyvernProtocol.wyvernProxyRegistry.proxies.callAsync(
         accountAddress
       );
 
@@ -2442,7 +2455,7 @@ export class OpenSeaPort {
     //   await this._wyvernProtocolReadOnly.wyvernProxyRegistry.registerProxy.estimateGasAsync(
     //     txnData
     //   );
-    const transactionHash =
+    const transactionResponse: ethers.providers.TransactionResponse =
       await this._wyvernProtocol.wyvernProxyRegistry.registerProxy.sendTransactionAsync(
         {
           ...txnData,
@@ -2452,7 +2465,7 @@ export class OpenSeaPort {
       );
 
     await this._confirmTransaction(
-      transactionHash,
+      transactionResponse.hash,
       EventType.InitializeAccount,
       "Initializing proxy for account",
       async () => {
@@ -2496,7 +2509,7 @@ export class OpenSeaPort {
     const addressToApprove =
       proxyAddress ||
       WyvernProtocol.getTokenTransferProxyAddress(this._networkName);
-    const approved = await rawCall(this.web3, {
+    const approved = await rawCall(this.provider, {
       from: accountAddress,
       to: tokenAddress,
       data: encodeCall(getMethod(ERC20, "allowance"), [
@@ -2528,7 +2541,7 @@ export class OpenSeaPort {
     sellOrder?: UnhashedOrder;
     referrerAddress?: string;
   }): Promise<UnhashedOrder> {
-    accountAddress = validateAndFormatWalletAddress(this.web3, accountAddress);
+    accountAddress = validateAndFormatWalletAddress(accountAddress);
     const schema = this._getSchema(asset.schemaName);
     const quantityBN = WyvernProtocol.toBaseUnitAmount(
       makeBigNumber(quantity),
@@ -3971,7 +3984,7 @@ export class OpenSeaPort {
     sell: Order;
     accountAddress: string;
     metadata?: string;
-  }) {
+  }): Promise<string> {
     let value;
     let shouldValidateBuy = true;
     let shouldValidateSell = true;
@@ -4015,7 +4028,7 @@ export class OpenSeaPort {
       matchMetadata: metadata,
     });
 
-    let txHash;
+    let txResponse: ethers.providers.TransactionResponse;
     const txnData: any = { from: accountAddress, value };
     const args: WyvernAtomicMatchParameters = [
       [
@@ -4114,7 +4127,7 @@ export class OpenSeaPort {
     // Then do the transaction
     try {
       this.logger(`Fulfilling order with gas set to ${txnData.gas}`);
-      txHash =
+      txResponse =
         await this._wyvernProtocol.wyvernExchange.atomicMatch_.sendTransactionAsync(
           args[0],
           args[1],
@@ -4146,20 +4159,21 @@ export class OpenSeaPort {
         }..."`
       );
     }
-    return txHash;
+    return txResponse.hash;
   }
 
   private async _getRequiredAmountForTakingSellOrder(sell: Order) {
-    const currentPrice = await this.getCurrentPrice(sell);
-    const estimatedPrice = estimateCurrentPrice(sell);
+    const currentPrice: BigNumber = await this.getCurrentPrice(sell);
+    const estimatedPrice: BigNumber = estimateCurrentPrice(sell);
 
     const maxPrice = BigNumber.max(currentPrice, estimatedPrice);
 
     // TODO Why is this not always a big number?
-    sell.takerRelayerFee = makeBigNumber(sell.takerRelayerFee);
+    // Think this is fixed in forked wyvern-js to always return a BigNumber
+    // sell.takerRelayerFee = makeBigNumber(sell.takerRelayerFee);
     const feePercentage = sell.takerRelayerFee.div(INVERSE_BASIS_POINT);
     const fee = feePercentage.times(maxPrice);
-    return fee.plus(maxPrice).ceil();
+    return fee.plus(maxPrice).integerValue(BigNumber.ROUND_CEIL);
   }
 
   private async _authorizeOrder(
@@ -4174,7 +4188,7 @@ export class OpenSeaPort {
     });
 
     const makerIsSmartContract = await isContractAddress(
-      this.web3,
+      this.provider,
       signerAddress
     );
 
@@ -4185,7 +4199,7 @@ export class OpenSeaPort {
         await this._approveOrder(order);
         return null;
       } else {
-        return await personalSignAsync(this.web3, message, signerAddress);
+        return await personalSignAsync(this.signer, message);
       }
     } catch (error) {
       this._dispatch(EventType.OrderDenied, {

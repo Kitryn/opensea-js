@@ -2465,9 +2465,9 @@ ws@7.4.6:
   resolved "https://registry.yarnpkg.com/ws/-/ws-7.4.6.tgz#5654ca8ecdeee47c33a9a4bf6d28e2be2980377c"
   integrity sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A==
 
-"wyvern-js@https://github.com/Kitryn/wyvern-js#8b75c770dd0b4dc93d0992cae89175d46ea12bbd":
+"wyvern-js@https://github.com/Kitryn/wyvern-js#c5caf53ca1622f3158830c5b4d1136fdbaa17842":
   version "3.2.0"
-  resolved "https://github.com/Kitryn/wyvern-js#8b75c770dd0b4dc93d0992cae89175d46ea12bbd"
+  resolved "https://github.com/Kitryn/wyvern-js#c5caf53ca1622f3158830c5b4d1136fdbaa17842"
   dependencies:
     "@0x/abi-gen" "^5.6.1"
     "@0x/assert" "^3.0.28"
@@ -2481,9 +2481,9 @@ ws@7.4.6:
     jsonschema "^1.4.0"
     lodash "^4.17.21"
 
-"wyvern-schemas@https://github.com/Kitryn/wyvern-schemas#820b83841e8ad17844fae28f33c54b6624c88d36":
+"wyvern-schemas@https://github.com/Kitryn/wyvern-schemas#e098680fe073fc2e53b7106272473e1ff155a88e":
   version "0.10.7"
-  resolved "https://github.com/Kitryn/wyvern-schemas#820b83841e8ad17844fae28f33c54b6624c88d36"
+  resolved "https://github.com/Kitryn/wyvern-schemas#e098680fe073fc2e53b7106272473e1ff155a88e"
   dependencies:
     axios "^0.21.1"
     bignumber.js "^9.0.1"
@@ -2491,7 +2491,7 @@ ws@7.4.6:
     ethereumjs-abi "https://github.com/ProjectWyvern/ethereumjs-abi.git"
     ethereumjs-util "^7.1.0"
     ethers "^5.4.4"
-    wyvern-js "https://github.com/Kitryn/wyvern-js#8b75c770dd0b4dc93d0992cae89175d46ea12bbd"
+    wyvern-js "https://github.com/Kitryn/wyvern-js#c5caf53ca1622f3158830c5b4d1136fdbaa17842"
 
 xmlhttprequest@1.8.0:
   version "1.8.0"

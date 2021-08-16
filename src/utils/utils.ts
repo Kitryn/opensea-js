@@ -770,7 +770,7 @@ export function estimateCurrentPrice(
   order: Order,
   secondsToBacktrack = 30,
   shouldRoundUp = true
-) {
+): BigNumber {
   let { basePrice, listingTime, expirationTime, extra } = order;
   const { side, takerRelayerFee, saleKind } = order;
 
