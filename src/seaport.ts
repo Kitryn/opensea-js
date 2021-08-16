@@ -2561,7 +2561,14 @@ export class OpenSeaPort {
     );
     const wyAsset = getWyvernAsset(schema, asset, quantityBN);
 
-    const openSeaAsset: APIOpenSeaNFTAsset = await this.api.getAsset(asset);
+    if (asset.tokenId == null) {
+      throw new Error("TokenId cannot be null! ERC20 buy orders not supported");
+    }
+
+    const openSeaAsset: APIOpenSeaNFTAsset = await this.api.getAsset({
+      tokenAddress: asset.tokenAddress,
+      tokenId: asset.tokenId,
+    });
 
     const taker = sellOrder ? sellOrder.maker : NULL_ADDRESS;
 
@@ -2681,7 +2688,14 @@ export class OpenSeaPort {
     const wyAsset = getWyvernAsset(schema, asset, quantityBN);
     const isPrivate = buyerAddress != NULL_ADDRESS;
 
-    const openSeaAsset: APIOpenSeaNFTAsset = await this.api.getAsset(asset);
+    if (asset.tokenId == null) {
+      throw new Error("tokenId cannot be null! ERC20 orders not supported");
+    }
+
+    const openSeaAsset: APIOpenSeaNFTAsset = await this.api.getAsset({
+      tokenAddress: asset.tokenAddress,
+      tokenId: asset.tokenId,
+    });
 
     const {
       totalSellerFeeBasisPoints,
@@ -2932,8 +2946,14 @@ export class OpenSeaPort {
     const taker = sellOrder ? sellOrder.maker : NULL_ADDRESS;
 
     // If all assets are for the same collection, use its fees
+    if (assets[0].tokenId == null) {
+      throw new Error("tokenId cannot be null! ERC20 orders not supported");
+    }
     const asset: APIOpenSeaNFTAsset | undefined = collection
-      ? await this.api.getAsset(assets[0])
+      ? await this.api.getAsset({
+          tokenAddress: assets[0].tokenAddress,
+          tokenId: assets[0].tokenId,
+        })
       : undefined;
     const { totalBuyerFeeBasisPoints, totalSellerFeeBasisPoints } =
       await this.computeFees({
@@ -3061,8 +3081,14 @@ export class OpenSeaPort {
     const isPrivate = buyerAddress != NULL_ADDRESS;
 
     // If all assets are for the same collection, use its fees
+    if (assets[0].tokenId == null) {
+      throw new Error("tokenId cannot be null! ERC20 orders not supported");
+    }
     const asset: APIOpenSeaNFTAsset | undefined = collection
-      ? await this.api.getAsset(assets[0])
+      ? await this.api.getAsset({
+          tokenAddress: assets[0].tokenAddress,
+          tokenId: assets[0].tokenId,
+        })
       : undefined;
     const {
       totalSellerFeeBasisPoints,
