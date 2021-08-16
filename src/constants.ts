@@ -70,3 +70,7 @@ export const SITE_HOST_MAINNET = "https://opensea.io";
 export const SITE_HOST_RINKEBY = "https://rinkeby.opensea.io";
 export const ORDERBOOK_PATH = `/wyvern/v${ORDERBOOK_VERSION}`;
 export const API_PATH = `/api/v${ORDERBOOK_VERSION}`;
+
+// Additional API constants
+export const GQL_BASE_MAINNET = API_BASE_MAINNET + "/graphql/";
+export const GQL_BASE_RINKEBY = "https://testnets-api.opensea.io/graphql/";

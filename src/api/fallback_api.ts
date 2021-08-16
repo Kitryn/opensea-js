@@ -13,14 +13,14 @@ import {
   OrderbookResponse,
   OrderJSON,
   OrderQuery,
-} from "./types";
+} from "../types";
 import {
   assetBundleFromJSON,
   assetFromJSON,
   delay,
   orderFromJSON,
   tokenFromJSON,
-} from "./utils/utils";
+} from "../utils/utils";
 import {
   API_BASE_MAINNET,
   API_BASE_RINKEBY,
@@ -29,7 +29,7 @@ import {
   ORDERBOOK_VERSION,
   SITE_HOST_MAINNET,
   SITE_HOST_RINKEBY,
-} from "./constants";
+} from "../constants";
 
 export class OpenSeaAPI {
   /**
