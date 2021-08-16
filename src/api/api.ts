@@ -90,6 +90,7 @@ export class OpenSeaAPI {
    *  on the `OrderJSON` type is supported
    */
   public async getOrder(query: OrderQuery): Promise<Order> {
+    // don't think this used by seaport.ts
     throw new Error("getOrder ==> Not Implemented");
   }
 
@@ -106,6 +107,7 @@ export class OpenSeaAPI {
     page = 1
   ): Promise<{ orders: Order[]; count: number }> {
     throw new Error("getOrders ==> Not implemented");
+    // don't think this used by seaport.ts
   }
 
   /**
@@ -160,6 +162,7 @@ export class OpenSeaAPI {
     page = 1
   ): Promise<{ assets: OpenSeaAsset[]; estimatedCount: number }> {
     throw new Error("getAssets ==> Not implemented"); // note: can throw, will bubble up, let caller handle
+    // don't think this used by seaport.ts
   }
 
   /**
@@ -187,6 +190,7 @@ export class OpenSeaAPI {
     slug: string;
   }): Promise<OpenSeaAssetBundle | null> {
     return this.fallBackAPI.getBundle({ slug });
+    // dont think this used by seaport.ts
   }
 
   /**
@@ -200,6 +204,7 @@ export class OpenSeaAPI {
     page = 1
   ): Promise<{ bundles: OpenSeaAssetBundle[]; estimatedCount: number }> {
     return this.fallBackAPI.getBundles(query, page);
+    // dont think this used by seaport.ts
   }
 
   // ======== helper methods
