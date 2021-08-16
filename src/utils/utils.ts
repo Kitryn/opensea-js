@@ -573,7 +573,7 @@ export function makeBigNumber(
 
 /**
  * Send a transaction to the blockchain and optionally confirm it
- * @param web3 Web3 instance
+ * @param signer ethers.js signer
  * @param param0 __namedParameters
  * @param from address sending transaction
  * @param to destination contract address
