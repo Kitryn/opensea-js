@@ -1,11 +1,23 @@
-import BigNumber from 'bignumber.js';
-import { WyvernProtocol } from 'wyvern-js';
-import * as Web3 from 'web3';
-import { AnnotatedFunctionABI, Schema } from 'wyvern-schemas/dist/types';
-import { Asset, AssetEvent, ECSignature, OpenSeaAccount, OpenSeaAsset, OpenSeaAssetBundle, OpenSeaAssetContract, OpenSeaCollection, OpenSeaFungibleToken, OpenSeaUser, Order, OrderJSON, Transaction, UnhashedOrder, UnsignedOrder, Web3Callback, WyvernAsset, WyvernBundle, WyvernFTAsset, WyvernNFTAsset } from '../types';
+import { BigNumber } from "@0x/utils";
+import { WyvernProtocol } from "wyvern-js";
+import { CallData, TxData } from "ethereum-types";
+import { ethers, Signer, BigNumber as ethersBN } from "ethers";
+import { AnnotatedFunctionABI, Schema } from "wyvern-schemas/dist/types";
+import { Asset, AssetEvent, ECSignature, OpenSeaAccount, OpenSeaAsset, OpenSeaAssetBundle, OpenSeaAssetContract, OpenSeaCollection, OpenSeaFungibleToken, OpenSeaUser, Order, OrderJSON, Transaction, UnhashedOrder, UnsignedOrder, WyvernAsset, WyvernBundle, WyvernFTAsset, WyvernNFTAsset } from "../types";
 export { WyvernProtocol };
+/**
+ * Helper functions for BigNumber validation
+ * We use bignumber.js in this code base. Ethers has their own BN representation however.
+ */
+export declare function toEthersBN(val: BigNumber): ethersBN;
+export declare function toBigNumberJS(val: ethersBN): BigNumber;
 export declare const annotateERC721TransferABI: (asset: WyvernNFTAsset) => AnnotatedFunctionABI;
 export declare const annotateERC20TransferABI: (asset: WyvernFTAsset) => AnnotatedFunctionABI;
+/**
+ * Promisify a callback-syntax web3 function
+ * @param inner callback function that accepts a Web3 callback function and passes
+ * it to the Web3 function
+ */
 /**
  * Promisify a call a method on a contract,
  * handling Parity errors. Returns '0x' if error.
@@ -15,8 +27,14 @@ export declare const annotateERC20TransferABI: (asset: WyvernFTAsset) => Annotat
  * and returns a Web3 Contract's call result, e.g. `c => erc721.ownerOf(3, c)`
  * @param onError callback when user denies transaction
  */
-export declare function promisifyCall<T>(callback: (fn: Web3Callback<T>) => void, onError?: (error: Error) => void): Promise<T | undefined>;
-export declare const confirmTransaction: (web3: Web3, txHash: string) => Promise<{}>;
+/**
+ *
+ * @param provider ethers.js provider
+ * @param txHash transaction hash
+ * @param timeout timeout in milliseconds, default 5 mins
+ * @returns
+ */
+export declare const confirmTransaction: (provider: ethers.providers.Provider, txHash: string, timeout?: number) => Promise<void>;
 export declare const assetFromJSON: (asset: any) => OpenSeaAsset;
 export declare const assetEventFromJSON: (assetEvent: any) => AssetEvent;
 export declare const transactionFromJSON: (transaction: any) => Transaction;
@@ -39,21 +57,21 @@ export declare const orderToJSON: (order: Order) => OrderJSON;
  * @param signerAddress web3 address signing the message
  * @returns A signature if provider can sign, otherwise null
  */
-export declare function personalSignAsync(web3: Web3, message: string, signerAddress: string): Promise<ECSignature>;
+export declare function personalSignAsync(signer: Signer, message: string): Promise<ECSignature>;
 /**
  * Checks whether a given address contains any code
  * @param web3 Web3 instance
  * @param address input address
  */
-export declare function isContractAddress(web3: Web3, address: string): Promise<boolean>;
+export declare function isContractAddress(provider: ethers.providers.Provider, address: string): Promise<boolean>;
 /**
  * Special fixes for making BigNumbers using web3 results
  * @param arg An arg or the result of a web3 call to turn into a BigNumber
  */
-export declare function makeBigNumber(arg: number | string | BigNumber): BigNumber;
+export declare function makeBigNumber(arg: number | string | BigNumber | ethersBN): BigNumber;
 /**
  * Send a transaction to the blockchain and optionally confirm it
- * @param web3 Web3 instance
+ * @param signer ethers.js signer
  * @param param0 __namedParameters
  * @param from address sending transaction
  * @param to destination contract address
@@ -62,7 +80,7 @@ export declare function makeBigNumber(arg: number | string | BigNumber): BigNumb
  * @param value value in ETH to send with data. Defaults to 0
  * @param onError callback when user denies transaction
  */
-export declare function sendRawTransaction(web3: Web3, { from, to, data, gasPrice, value, gas }: Web3.TxData, onError: (error: Error) => void): Promise<string>;
+export declare function sendRawTransaction(signer: Signer, { from, to, data, gasPrice, value }: TxData, onError: (error: Error) => void): Promise<string>;
 /**
  * Call a method on a contract, sending arbitrary data and
  * handling Parity errors. Returns '0x' if error.
@@ -73,7 +91,7 @@ export declare function sendRawTransaction(web3: Web3, { from, to, data, gasPric
  * @param data data to send to contract
  * @param onError callback when user denies transaction
  */
-export declare function rawCall(web3: Web3, { from, to, data }: Web3.CallData, onError?: (error: Error) => void): Promise<string>;
+export declare function rawCall(provider: ethers.providers.Provider, { from, to, data }: CallData, onError?: (error: Error) => void): Promise<string>;
 /**
  * Estimate Gas usage for a transaction
  * @param web3 Web3 instance
@@ -82,18 +100,18 @@ export declare function rawCall(web3: Web3, { from, to, data }: Web3.CallData, o
  * @param data data to send to contract
  * @param value value in ETH to send with data
  */
-export declare function estimateGas(web3: Web3, { from, to, data, value }: Web3.TxData): Promise<number>;
+export declare function estimateGas(provider: ethers.providers.Provider, { from, to, data, value }: TxData): Promise<BigNumber>;
 /**
  * Get mean gas price for sending a txn, in wei
  * @param web3 Web3 instance
  */
-export declare function getCurrentGasPrice(web3: Web3): Promise<BigNumber>;
+export declare function getCurrentGasPrice(provider: ethers.providers.Provider): Promise<BigNumber>;
 /**
  * Get current transfer fees for an asset
  * @param web3 Web3 instance
  * @param asset The asset to check for transfer fees
  */
-export declare function getTransferFeeSettings(web3: Web3, { asset, accountAddress }: {
+export declare function getTransferFeeSettings(provider: ethers.providers.Provider, { asset, accountAddress, }: {
     asset: Asset;
     accountAddress?: string;
 }): Promise<{
@@ -142,13 +160,13 @@ export declare function assignOrdersToSides(order: Order, matchingOrder: Unsigne
  * Delay using setTimeout
  * @param ms milliseconds to wait
  */
-export declare function delay(ms: number): Promise<{}>;
+export declare function delay(ms: number): Promise<unknown>;
 /**
  * Validates that an address exists, isn't null, and is properly
  * formatted for Wyvern and OpenSea
  * @param address input address
  */
-export declare function validateAndFormatWalletAddress(web3: Web3, address: string): string;
+export declare function validateAndFormatWalletAddress(address: string): string;
 /**
  * Notify developer when a pattern will be deprecated
  * @param msg message to log to console
@@ -158,4 +176,4 @@ export declare function onDeprecated(msg: string): void;
  * Get special-case approval addresses for an erc721 contract
  * @param erc721Contract contract to check
  */
-export declare function getNonCompliantApprovalAddress(erc721Contract: Web3.ContractInstance, tokenId: string, accountAddress: string): Promise<string | undefined>;
+export declare function getNonCompliantApprovalAddress(erc721Contract: ethers.Contract, tokenId: string, accountAddress: string): Promise<string | undefined>;

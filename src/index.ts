@@ -1,5 +1,5 @@
 import { OpenSeaPort } from "./seaport";
-import { OpenSeaAPI } from "./api";
+import { OpenSeaAPI } from "./api/api";
 import { Network, EventData, EventType } from "./types";
 export { orderToJSON, orderFromJSON, WyvernProtocol } from "./utils/utils";
 export {

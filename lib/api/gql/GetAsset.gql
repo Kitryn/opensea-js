@@ -1,0 +1,123 @@
+query getAsset($assetContractAddress: AddressScalar!, $tokenId: String!) {
+  archetype(
+    archetype: {
+      assetContractAddress: $assetContractAddress
+      tokenId: $tokenId
+    }
+  ) {
+    asset {
+      assetContract {
+        ...AssetContractTypeFragment
+      }
+      name
+      collection {
+        devBuyerFeeBasisPoints
+        devSellerFeeBasisPoints
+        openseaBuyerFeeBasisPoints
+        openseaSellerFeeBasisPoints
+        slug
+        name
+      }
+      tokenId
+      assetOwners(first: 1) {
+        edges {
+          node {
+            owner {
+              ...AccountTypeFragment
+            }
+          }
+        }
+      }
+      assetEventData {
+        lastSale {
+          timestamp
+          totalPriceQuantity {
+            ...AssetQuantityTypeFragment
+          }
+          eventType
+        }
+      }
+      traits(first: 100) {
+        edges {
+          node {
+            intValue
+            traitType
+            value
+          }
+        }
+      }
+    }
+  }
+  tradeSummary(
+    archetype: {
+      assetContractAddress: $assetContractAddress
+      tokenId: $tokenId
+    }
+  ) {
+    bestAsk {
+      englishAuctionReservePrice
+      dutchAuctionFinalPrice
+      closedAt
+      openedAt
+      orderType
+      maker {
+        ...AccountTypeFragment
+      }
+      takerAssetBundle {
+        ...AssetBundleTypeFragment
+      }
+      priceFnEndedAt
+      remainingQuantity
+      side
+    }
+    bestBid {
+      maker {
+        ...AccountTypeFragment
+      }
+      orderType
+      makerAssetBundle {
+        ...AssetBundleTypeFragment
+      }
+    }
+  }
+}
+
+fragment AssetContractTypeFragment on AssetContractType {
+  address
+  chain
+  name
+  symbol
+  tokenStandard
+}
+
+fragment AccountTypeFragment on AccountType {
+  address
+  displayName
+}
+
+fragment AssetBundleTypeFragment on AssetBundleType {
+  assetQuantities(first: 1) {
+    edges {
+      node {
+        ...AssetQuantityTypeFragment
+      }
+    }
+  }
+}
+
+fragment AssetTypeFragment on AssetType {
+  decimals
+  usdSpotPrice
+  symbol
+  assetContract {
+    ...AssetContractTypeFragment
+  }
+}
+
+fragment AssetQuantityTypeFragment on AssetQuantityType {
+  quantity
+  quantityInEth
+  asset {
+    ...AssetTypeFragment
+  }
+}

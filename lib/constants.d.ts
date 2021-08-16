@@ -1,4 +1,4 @@
-import { BigNumber } from 'bignumber.js';
+import { BigNumber } from "@0x/utils";
 export declare const DEFAULT_GAS_INCREASE_FACTOR = 1.01;
 export declare const NULL_ADDRESS: string;
 export declare const NULL_BLOCK_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -48,3 +48,5 @@ export declare const SITE_HOST_MAINNET = "https://opensea.io";
 export declare const SITE_HOST_RINKEBY = "https://rinkeby.opensea.io";
 export declare const ORDERBOOK_PATH: string;
 export declare const API_PATH: string;
+export declare const GQL_BASE_MAINNET: string;
+export declare const GQL_BASE_RINKEBY = "https://testnets-api.opensea.io/graphql/";
