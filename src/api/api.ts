@@ -18,6 +18,11 @@ import {
   API_BASE_RINKEBY,
 } from "../constants";
 import { OpenSeaAPI as FallbackAPI } from "./fallback_api";
+import { APIOpenSeaNFTAsset } from "./validators";
+import { createGetAssetQuery } from "./query-builder";
+import { ApiError, QueryBody } from "./query-types";
+import fetch, { RequestInit, Response } from "node-fetch";
+import { parseNFTAsset } from "./parsers";
 
 export class OpenSeaAPI {
   public readonly gqlBaseUrl: string;
@@ -106,7 +111,7 @@ export class OpenSeaAPI {
   /**
    * Fetch an asset from the API, throwing if none is found
    * @param tokenAddress Address of the asset's contract
-   * @param tokenId The asset's token ID, or null if ERC-20
+   * @param tokenId The asset's token ID. The old behaviour had it possible to null if ERC-20 -- does this work in GQL? TODO
    * @param retries Number of times to retry if the service is unavailable for any reason
    */
   public async getAsset(
@@ -115,11 +120,33 @@ export class OpenSeaAPI {
       tokenId,
     }: {
       tokenAddress: string;
-      tokenId: string | number | null;
+      tokenId: string | number;
     },
     retries = 1
-  ): Promise<OpenSeaAsset> {
-    throw new Error("getAsset ==> Not implemented");
+  ): Promise<APIOpenSeaNFTAsset> {
+    const query = createGetAssetQuery(
+      tokenAddress,
+      parseInt(`${tokenId}`) // silence typescript and cast to string first
+    );
+
+    let json;
+    try {
+      json = await this.postQuery(query);
+    } catch (error) {
+      _throwOrContinue(error, retries);
+      await delay(1000);
+      return this.getAsset({ tokenAddress, tokenId }, retries - 1);
+    }
+
+    if (json.errors != null) {
+      throw new ApiError(
+        `Error in GQL response: ${JSON.stringify(json.errors)}`,
+        undefined,
+        json.errors
+      );
+    }
+
+    return parseNFTAsset(json);
   }
 
   /**
@@ -132,7 +159,7 @@ export class OpenSeaAPI {
     query: OpenSeaAssetQuery = {},
     page = 1
   ): Promise<{ assets: OpenSeaAsset[]; estimatedCount: number }> {
-    throw new Error("getAssets ==> Not implemented");
+    throw new Error("getAssets ==> Not implemented"); // note: can throw, will bubble up, let caller handle
   }
 
   /**
@@ -174,4 +201,93 @@ export class OpenSeaAPI {
   ): Promise<{ bundles: OpenSeaAssetBundle[]; estimatedCount: number }> {
     return this.fallBackAPI.getBundles(query, page);
   }
+
+  // ======== helper methods
+  public async postQuery(query: QueryBody): Promise<any> {
+    const fetchOpts: RequestInit = {
+      method: "post",
+      body: JSON.stringify(query),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(this.apiKey ? { "X-API-KEY": this.apiKey } : {}),
+      },
+    };
+
+    // this.logger({
+    //   level: "verbose",
+    //   message: `postQuery => id: ${query.id}, variables: ${
+    //     query.variables ? JSON.stringify(query.variables) : {}
+    //   }`,
+    // });
+
+    return fetch(this.gqlBaseUrl, fetchOpts)
+      .then((res) => this._handleApiResponse(res))
+      .catch((error) => {
+        // Catches errors from fetch() (FetchError) and everything within _handleApiResponse
+        // this.logger({
+        //   level: "error",
+        //   message: `postQuery ${query.id} => ${error.name}: ${error.message}`,
+        //   ...(error.data ? { data: error.data } : {}),
+        // });
+        // Re-throws -- caller should handle
+        throw new ApiError(
+          error.message,
+          error.stack ? error.stack : undefined,
+          error.data ? error.data : undefined
+        );
+      });
+  }
+
+  private async _handleApiResponse(res: Response): Promise<any> {
+    let resultText: string | undefined;
+    let resultJson: any;
+    try {
+      resultText = await res.text();
+      resultJson = JSON.parse(resultText);
+    } catch {}
+
+    const data: any = resultJson || resultText; // resultJson if resultJson, if not resultText or undefined if neither
+
+    if (!res.ok) {
+      // this.logger({
+      //   level: "error",
+      //   message: `handleApiResponse => HTTP request failed with status ${res.status}`,
+      //   ...(data ? { data } : {}),
+      // });
+      throw new ApiError(
+        `HTTP request failed with status ${res.status}`,
+        undefined,
+        data ?? undefined
+      );
+    }
+
+    if (resultJson == null) {
+      // this.logger({
+      //   level: "error",
+      //   message: `handleApiResponse => Error parsing response into JSON`,
+      //   ...(data ? { data } : {}),
+      // });
+      throw new ApiError(
+        `Error parsing response into JSON`,
+        undefined,
+        data ?? undefined
+      );
+    }
+
+    return resultJson;
+  }
+}
+
+function _throwOrContinue(error: Error, retries: number) {
+  const isUnavailable =
+    !!error.message &&
+    (error.message.includes("503") || error.message.includes("429"));
+  if (retries <= 0 || !isUnavailable) {
+    throw error;
+  }
+}
+
+async function delay(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
 }

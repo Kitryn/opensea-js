@@ -126,6 +126,7 @@ import {
   MANA_ADDRESS,
 } from "./constants";
 import { FunctionAbi } from "ethereum-types";
+import { APIOpenSeaNFTAsset } from "./api/validators";
 
 export class OpenSeaPort {
   // Web3 instance to use
@@ -2090,7 +2091,7 @@ export class OpenSeaPort {
     isPrivate = false,
     extraBountyBasisPoints = 0,
   }: {
-    asset?: OpenSeaAsset;
+    asset?: APIOpenSeaNFTAsset;
     side: OrderSide;
     accountAddress?: string;
     isPrivate?: boolean;
@@ -2117,17 +2118,22 @@ export class OpenSeaPort {
     // Compute transferFrom fees
     if (side == OrderSide.Sell && asset) {
       // Server-side knowledge
-      transferFee = asset.transferFee
-        ? makeBigNumber(asset.transferFee)
-        : transferFee;
-      transferFeeTokenAddress = asset.transferFeePaymentToken
-        ? asset.transferFeePaymentToken.address
-        : transferFeeTokenAddress;
+      // TODO -- I'm not sure if this data is available through the graphql api?
+      // transferFee = asset.transferFee
+      //   ? makeBigNumber(asset.transferFee)
+      //   : transferFee;
+      // transferFeeTokenAddress = asset.transferFeePaymentToken
+      //   ? asset.transferFeePaymentToken.address
+      //   : transferFeeTokenAddress;
 
       try {
         // web3 call to update it
+        const _asset: Asset = {
+          tokenAddress: asset.assetContract.address,
+          tokenId: asset.tokenId.toString(),
+        };
         const result = await getTransferFeeSettings(this.provider, {
-          asset,
+          asset: _asset,
           accountAddress,
         });
         transferFee =
@@ -2555,7 +2561,7 @@ export class OpenSeaPort {
     );
     const wyAsset = getWyvernAsset(schema, asset, quantityBN);
 
-    const openSeaAsset: OpenSeaAsset = await this.api.getAsset(asset);
+    const openSeaAsset: APIOpenSeaNFTAsset = await this.api.getAsset(asset);
 
     const taker = sellOrder ? sellOrder.maker : NULL_ADDRESS;
 
@@ -2594,9 +2600,13 @@ export class OpenSeaPort {
     );
     const times = this._getTimeParameters(expirationTime);
 
+    const _asset: Asset = {
+      tokenAddress: openSeaAsset.assetContract.address,
+      tokenId: openSeaAsset.tokenId.toString(),
+    };
     const { staticTarget, staticExtradata } =
       await this._getStaticCallTargetAndExtraData({
-        asset: openSeaAsset,
+        asset: _asset,
         useTxnOriginStaticCall: false,
       });
 
@@ -2671,7 +2681,7 @@ export class OpenSeaPort {
     const wyAsset = getWyvernAsset(schema, asset, quantityBN);
     const isPrivate = buyerAddress != NULL_ADDRESS;
 
-    const openSeaAsset = await this.api.getAsset(asset);
+    const openSeaAsset: APIOpenSeaNFTAsset = await this.api.getAsset(asset);
 
     const {
       totalSellerFeeBasisPoints,
@@ -2726,9 +2736,13 @@ export class OpenSeaPort {
       sellerBountyBasisPoints
     );
 
+    const _asset: Asset = {
+      tokenAddress: openSeaAsset.assetContract.address,
+      tokenId: openSeaAsset.tokenId.toString(),
+    };
     const { staticTarget, staticExtradata } =
       await this._getStaticCallTargetAndExtraData({
-        asset: openSeaAsset,
+        asset: _asset,
         useTxnOriginStaticCall: waitForHighestBid,
       });
 
@@ -2773,7 +2787,7 @@ export class OpenSeaPort {
     asset,
     useTxnOriginStaticCall,
   }: {
-    asset: OpenSeaAsset;
+    asset: Asset;
     useTxnOriginStaticCall: boolean;
   }): Promise<{
     staticTarget: string;
@@ -2918,7 +2932,9 @@ export class OpenSeaPort {
     const taker = sellOrder ? sellOrder.maker : NULL_ADDRESS;
 
     // If all assets are for the same collection, use its fees
-    const asset = collection ? await this.api.getAsset(assets[0]) : undefined;
+    const asset: APIOpenSeaNFTAsset | undefined = collection
+      ? await this.api.getAsset(assets[0])
+      : undefined;
     const { totalBuyerFeeBasisPoints, totalSellerFeeBasisPoints } =
       await this.computeFees({
         asset,
@@ -3045,7 +3061,9 @@ export class OpenSeaPort {
     const isPrivate = buyerAddress != NULL_ADDRESS;
 
     // If all assets are for the same collection, use its fees
-    const asset = collection ? await this.api.getAsset(assets[0]) : undefined;
+    const asset: APIOpenSeaNFTAsset | undefined = collection
+      ? await this.api.getAsset(assets[0])
+      : undefined;
     const {
       totalSellerFeeBasisPoints,
       totalBuyerFeeBasisPoints,
