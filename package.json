@@ -48,6 +48,7 @@
     "isomorphic-unfetch": "^3.1.0",
     "lodash": "^4.17.4",
     "superstruct": "^0.15.2",
+    "query-string": "^7.0.1",
     "wyvern-js": "https://github.com/Kitryn/wyvern-js#c5caf53ca1622f3158830c5b4d1136fdbaa17842",
     "wyvern-schemas": "https://github.com/Kitryn/wyvern-schemas#e098680fe073fc2e53b7106272473e1ff155a88e"
   },

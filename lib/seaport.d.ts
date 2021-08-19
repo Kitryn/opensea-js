@@ -1,18 +1,17 @@
-import * as Web3 from 'web3';
-import { OpenSeaAPI } from './api';
-import { FeeMethod, OpenSeaAPIConfig, OrderSide, UnhashedOrder, Order, UnsignedOrder, PartialReadonlyContractAbi, EventType, EventData, OpenSeaAsset, WyvernSchemaName, OpenSeaFungibleToken, WyvernAsset, ComputedFees, Asset } from './types';
-import { BigNumber } from 'bignumber.js';
-import { EventSubscription } from 'fbemitter';
+import { ethers, Signer } from "ethers";
+import { OpenSeaAPI } from "./api";
+import { FeeMethod, OpenSeaAPIConfig, OrderSide, UnhashedOrder, Order, UnsignedOrder, PartialReadonlyContractAbi, EventType, EventData, OpenSeaAsset, WyvernSchemaName, OpenSeaFungibleToken, WyvernAsset, ComputedFees, Asset } from "./types";
+import { BigNumber } from "@0x/utils";
+import { EventSubscription } from "fbemitter";
 export declare class OpenSeaPort {
-    web3: Web3;
-    web3ReadOnly: Web3;
+    provider: ethers.providers.Provider;
+    signer: Signer;
     logger: (arg: string) => void;
     readonly api: OpenSeaAPI;
     gasPriceAddition: BigNumber;
     gasIncreaseFactor: number;
     private _networkName;
     private _wyvernProtocol;
-    private _wyvernProtocolReadOnly;
     private _emitter;
     private _wrappedNFTFactoryAddress;
     private _wrappedNFTLiquidationProxyAddress;
@@ -20,13 +19,12 @@ export declare class OpenSeaPort {
     /**
      * Your very own seaport.
      * Create a new instance of OpenSeaJS.
-     * @param provider Web3 Provider to use for transactions. For example:
-     *  `const provider = new Web3.providers.HttpProvider('https://mainnet.infura.io')`
+     * @param signer Ethers signer to use for transactions. MUST be connected to a provider.
      * @param apiConfig configuration options, including `networkName`
      * @param logger logger, optional, a function that will be called with debugging
      *  information
      */
-    constructor(provider: Web3.Provider, apiConfig?: OpenSeaAPIConfig, logger?: (arg: string) => void);
+    constructor(signer: Signer, apiConfig?: OpenSeaAPIConfig, logger?: (arg: string) => void);
     /**
      * Add a listener to a marketplace event
      * @param event An event to listen for
@@ -53,7 +51,7 @@ export declare class OpenSeaPort {
      * @param assets An array of objects with the tokenId and tokenAddress of each of the assets to bundle together.
      * @param accountAddress Address of the user's wallet
      */
-    wrapAssets({ assets, accountAddress }: {
+    wrapAssets({ assets, accountAddress, }: {
         assets: Asset[];
         accountAddress: string;
     }): Promise<void>;
@@ -65,7 +63,7 @@ export declare class OpenSeaPort {
      * @param destinationAddresses Addresses that each resulting ERC721 token will be sent to. Must be the same length as `tokenIds`. Each address corresponds with its respective token ID in the `tokenIds` array.
      * @param accountAddress Address of the user's wallet
      */
-    unwrapAssets({ assets, destinationAddresses, accountAddress }: {
+    unwrapAssets({ assets, destinationAddresses, accountAddress, }: {
         assets: Asset[];
         destinationAddresses: string[];
         accountAddress: string;
@@ -80,7 +78,7 @@ export declare class OpenSeaPort {
      * @param accountAddress Address of the user's wallet
      * @param uniswapSlippageAllowedInBasisPoints The amount of slippage that a user will tolerate in their Uniswap trade; if Uniswap cannot fulfill the order without more slippage, the whole function will revert.
      */
-    liquidateAssets({ assets, accountAddress, uniswapSlippageAllowedInBasisPoints }: {
+    liquidateAssets({ assets, accountAddress, uniswapSlippageAllowedInBasisPoints, }: {
         assets: Asset[];
         accountAddress: string;
         uniswapSlippageAllowedInBasisPoints: number;
@@ -94,7 +92,7 @@ export declare class OpenSeaPort {
      * @param contractAddress Address of the corresponding NFT core contract for these NFTs.
      * @param accountAddress Address of the user's wallet
      */
-    purchaseAssets({ numTokensToBuy, amount, contractAddress, accountAddress }: {
+    purchaseAssets({ numTokensToBuy, amount, contractAddress, accountAddress, }: {
         numTokensToBuy: number;
         amount: BigNumber;
         contractAddress: string;
@@ -107,11 +105,6 @@ export declare class OpenSeaPort {
      * @param isBuying A bool for whether the user is buying or selling
      * @param contractAddress Address of the corresponding NFT core contract for these NFTs.
      */
-    getQuoteFromUniswap({ numTokens, isBuying, contractAddress }: {
-        numTokens: number;
-        isBuying: boolean;
-        contractAddress: string;
-    }): Promise<number>;
     /**
      * Wrap ETH into W-ETH.
      * W-ETH is needed for placing buy orders (making offers).
@@ -120,7 +113,7 @@ export declare class OpenSeaPort {
      * @param amountInEth How much ether to wrap
      * @param accountAddress Address of the user's wallet containing the ether
      */
-    wrapEth({ amountInEth, accountAddress }: {
+    wrapEth({ amountInEth, accountAddress, }: {
         amountInEth: number;
         accountAddress: string;
     }): Promise<void>;
@@ -131,7 +124,7 @@ export declare class OpenSeaPort {
      * @param amountInEth How much W-ETH to unwrap
      * @param accountAddress Address of the user's wallet containing the W-ETH
      */
-    unwrapWeth({ amountInEth, accountAddress }: {
+    unwrapWeth({ amountInEth, accountAddress, }: {
         amountInEth: number;
         accountAddress: string;
     }): Promise<void>;
@@ -150,7 +143,7 @@ export declare class OpenSeaPort {
      * @param sellOrder Optional sell order (like an English auction) to ensure fee and schema compatibility
      * @param referrerAddress The optional address that referred the order
      */
-    createBundleBuyOrder({ assets, collection, quantities, accountAddress, startAmount, expirationTime, paymentTokenAddress, sellOrder, referrerAddress }: {
+    createBundleBuyOrder({ assets, collection, quantities, accountAddress, startAmount, expirationTime, paymentTokenAddress, sellOrder, referrerAddress, }: {
         assets: Asset[];
         collection?: {
             slug: string;
@@ -177,7 +170,7 @@ export declare class OpenSeaPort {
      * @param sellOrder Optional sell order (like an English auction) to ensure fee and schema compatibility
      * @param referrerAddress The optional address that referred the order
      */
-    createBuyOrder({ asset, accountAddress, startAmount, quantity, expirationTime, paymentTokenAddress, sellOrder, referrerAddress }: {
+    createBuyOrder({ asset, accountAddress, startAmount, quantity, expirationTime, paymentTokenAddress, sellOrder, referrerAddress, }: {
         asset: Asset;
         accountAddress: string;
         startAmount: number;
@@ -208,7 +201,7 @@ export declare class OpenSeaPort {
      * @param buyerAddress Optional address that's allowed to purchase this item. If specified, no other address will be able to take the order, unless its value is the null address.
      * @param buyerEmail Optional email of the user that's allowed to purchase this item. If specified, a user will have to verify this email before being able to take the order.
      */
-    createSellOrder({ asset, accountAddress, startAmount, endAmount, quantity, listingTime, expirationTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, buyerEmail }: {
+    createSellOrder({ asset, accountAddress, startAmount, endAmount, quantity, listingTime, expirationTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, buyerEmail, }: {
         asset: Asset;
         accountAddress: string;
         startAmount: number;
@@ -244,7 +237,7 @@ export declare class OpenSeaPort {
      * @param numberOfOrders Number of times to repeat creating the same order for each asset. If greater than 5, creates them in batches of 5. Requires an `apiKey` to be set during seaport initialization in order to not be throttled by the API.
      * @returns The number of orders created in total
      */
-    createFactorySellOrders({ assets, accountAddress, startAmount, endAmount, quantity, listingTime, expirationTime, waitForHighestBid, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, buyerEmail, numberOfOrders }: {
+    createFactorySellOrders({ assets, accountAddress, startAmount, endAmount, quantity, listingTime, expirationTime, waitForHighestBid, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, buyerEmail, numberOfOrders, }: {
         assets: Asset[];
         accountAddress: string;
         startAmount: number;
@@ -281,7 +274,7 @@ export declare class OpenSeaPort {
      * @param extraBountyBasisPoints Optional basis points (1/100th of a percent) to reward someone for referring the fulfillment of this order
      * @param buyerAddress Optional address that's allowed to purchase this bundle. If specified, no other address will be able to take the order, unless it's the null address.
      */
-    createBundleSellOrder({ bundleName, bundleDescription, bundleExternalLink, assets, collection, quantities, accountAddress, startAmount, endAmount, expirationTime, listingTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress }: {
+    createBundleSellOrder({ bundleName, bundleDescription, bundleExternalLink, assets, collection, quantities, accountAddress, startAmount, endAmount, expirationTime, listingTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, }: {
         bundleName: string;
         bundleDescription?: string;
         bundleExternalLink?: string;
@@ -310,7 +303,7 @@ export declare class OpenSeaPort {
      * @param referrerAddress The optional address that referred the order
      * @returns Transaction hash for fulfilling the order
      */
-    fulfillOrder({ order, accountAddress, recipientAddress, referrerAddress }: {
+    fulfillOrder({ order, accountAddress, recipientAddress, referrerAddress, }: {
         order: Order;
         accountAddress: string;
         recipientAddress?: string;
@@ -322,7 +315,7 @@ export declare class OpenSeaPort {
      * @param order The order to cancel
      * @param accountAddress The order maker's wallet address
      */
-    cancelOrder({ order, accountAddress }: {
+    cancelOrder({ order, accountAddress, }: {
         order: Order;
         accountAddress: string;
     }): Promise<void>;
@@ -344,7 +337,7 @@ export declare class OpenSeaPort {
      * @param schemaName The Wyvern schema name corresponding to the asset type
      * @returns Transaction hash if a new transaction was created, otherwise null
      */
-    approveSemiOrNonFungibleToken({ tokenId, tokenAddress, accountAddress, proxyAddress, tokenAbi, skipApproveAllIfTokenAddressIn, schemaName }: {
+    approveSemiOrNonFungibleToken({ tokenId, tokenAddress, accountAddress, proxyAddress, tokenAbi, skipApproveAllIfTokenAddressIn, schemaName, }: {
         tokenId: string;
         tokenAddress: string;
         accountAddress: string;
@@ -364,7 +357,7 @@ export declare class OpenSeaPort {
      * @param minimumAmount The minimum amount needed to skip a transaction. Defaults to the max-integer.
      * @returns Transaction hash if a new transaction occurred, otherwise null
      */
-    approveFungibleToken({ accountAddress, tokenAddress, proxyAddress, minimumAmount }: {
+    approveFungibleToken({ accountAddress, tokenAddress, proxyAddress, minimumAmount, }: {
         accountAddress: string;
         tokenAddress: string;
         proxyAddress?: string;
@@ -381,7 +374,7 @@ export declare class OpenSeaPort {
      * @param proxyAddress The user's proxy address. If unspecified, uses the Wyvern token transfer proxy address.
      * @returns Transaction hash
      */
-    unapproveFungibleToken({ accountAddress, tokenAddress, proxyAddress }: {
+    unapproveFungibleToken({ accountAddress, tokenAddress, proxyAddress, }: {
         accountAddress: string;
         tokenAddress: string;
         proxyAddress?: string;
@@ -402,7 +395,7 @@ export declare class OpenSeaPort {
      * @param recipientAddress The optional address to receive the order's item(s) or curriencies. If not specified, defaults to accountAddress.
      * @param referrerAddress The optional address that referred the order
      */
-    isOrderFulfillable({ order, accountAddress, recipientAddress, referrerAddress }: {
+    isOrderFulfillable({ order, accountAddress, recipientAddress, referrerAddress, }: {
         order: Order;
         accountAddress: string;
         recipientAddress?: string;
@@ -423,7 +416,7 @@ export declare class OpenSeaPort {
      * @param useProxy Use the `fromAddress`'s proxy contract only if the `fromAddress` has already approved the asset for sale. Required if checking an ERC-721 v1 asset (like CryptoKitties) that doesn't check if the transferFrom caller is the owner of the asset (only allowing it if it's an approved address).
      * @param retries How many times to retry if false
      */
-    isAssetTransferrable({ asset, fromAddress, toAddress, quantity, useProxy }: {
+    isAssetTransferrable({ asset, fromAddress, toAddress, quantity, useProxy, }: {
         asset: Asset;
         fromAddress: string;
         toAddress: string;
@@ -439,7 +432,7 @@ export declare class OpenSeaPort {
      * @param quantity The amount of the asset to transfer, if it's fungible (optional). In units (not base units), e.g. not wei.
      * @returns Transaction hash
      */
-    transfer({ fromAddress, toAddress, asset, quantity }: {
+    transfer({ fromAddress, toAddress, asset, quantity, }: {
         fromAddress: string;
         toAddress: string;
         asset: Asset;
@@ -455,7 +448,7 @@ export declare class OpenSeaPort {
      * @param schemaName The Wyvern schema name corresponding to the asset type, if not in each Asset definition
      * @returns Transaction hash
      */
-    transferAll({ assets, fromAddress, toAddress, schemaName }: {
+    transferAll({ assets, fromAddress, toAddress, schemaName, }: {
         assets: Asset[];
         fromAddress: string;
         toAddress: string;
@@ -474,7 +467,7 @@ export declare class OpenSeaPort {
      * FUTURE: officiallySupported: Filter for tokens that are
      *    officially supported and shown on opensea.io
      */
-    getFungibleTokens({ symbol, address, name }?: {
+    getFungibleTokens({ symbol, address, name, }?: {
         symbol?: string;
         address?: string;
         name?: string;
@@ -499,7 +492,7 @@ export declare class OpenSeaPort {
      * @param schemaName Optional schema name for the fungible token
      * @param retries Number of times to retry if balance is undefined
      */
-    getTokenBalance({ accountAddress, tokenAddress, schemaName }: {
+    getTokenBalance({ accountAddress, tokenAddress, schemaName, }: {
         accountAddress: string;
         tokenAddress: string;
         schemaName?: WyvernSchemaName;
@@ -513,7 +506,7 @@ export declare class OpenSeaPort {
      * @param isPrivate Whether the order is private or not (known taker)
      * @param extraBountyBasisPoints The basis points to add for the bounty. Will throw if it exceeds the assets' contract's OpenSea fee.
      */
-    computeFees({ asset, side, accountAddress, isPrivate, extraBountyBasisPoints }: {
+    computeFees({ asset, side, accountAddress, isPrivate, extraBountyBasisPoints, }: {
         asset?: OpenSeaAsset;
         side: OrderSide;
         accountAddress?: string;
@@ -536,7 +529,7 @@ export declare class OpenSeaPort {
      * Will be slightly above the result of estimateGas to make it more reliable
      * @param estimation The result of estimateGas for a transaction
      */
-    _correctGasAmount(estimation: number): number;
+    _correctGasAmount(estimation: BigNumber): BigNumber;
     /**
      * Estimate the gas needed to match two orders. Returns undefined if tx errors
      * @param param0 __namedParamaters Object
@@ -546,12 +539,12 @@ export declare class OpenSeaPort {
      * @param metadata Metadata bytes32 to send with the match
      * @param retries Number of times to retry if false
      */
-    _estimateGasForMatch({ buy, sell, accountAddress, metadata }: {
+    _estimateGasForMatch({ buy, sell, accountAddress, metadata, }: {
         buy: Order;
         sell: Order;
         accountAddress: string;
         metadata?: string;
-    }, retries?: number): Promise<number | undefined>;
+    }, retries?: number): Promise<BigNumber | undefined>;
     /**
      * Estimate the gas needed to transfer assets in bulk
      * Used for tests
@@ -561,12 +554,12 @@ export declare class OpenSeaPort {
      * @param toAddress The recipient's wallet address
      * @param schemaName The Wyvern schema name corresponding to the asset type, if not in each asset
      */
-    _estimateGasForTransfer({ assets, fromAddress, toAddress, schemaName }: {
+    _estimateGasForTransfer({ assets, fromAddress, toAddress, schemaName, }: {
         assets: Asset[];
         fromAddress: string;
         toAddress: string;
         schemaName?: WyvernSchemaName;
-    }): Promise<number>;
+    }): Promise<BigNumber>;
     /**
      * Get the proxy address for a user's wallet.
      * Internal method exposed for dev flexibility.
@@ -591,12 +584,12 @@ export declare class OpenSeaPort {
      * @param tokenAddress Address for the token's contract
      * @param proxyAddress User's proxy address. If undefined, uses the token transfer proxy address
      */
-    _getApprovedTokenCount({ accountAddress, tokenAddress, proxyAddress }: {
+    _getApprovedTokenCount({ accountAddress, tokenAddress, proxyAddress, }: {
         accountAddress: string;
         tokenAddress?: string;
         proxyAddress?: string;
     }): Promise<BigNumber>;
-    _makeBuyOrder({ asset, quantity, accountAddress, startAmount, expirationTime, paymentTokenAddress, extraBountyBasisPoints, sellOrder, referrerAddress }: {
+    _makeBuyOrder({ asset, quantity, accountAddress, startAmount, expirationTime, paymentTokenAddress, extraBountyBasisPoints, sellOrder, referrerAddress, }: {
         asset: Asset;
         quantity: number;
         accountAddress: string;
@@ -607,7 +600,7 @@ export declare class OpenSeaPort {
         sellOrder?: UnhashedOrder;
         referrerAddress?: string;
     }): Promise<UnhashedOrder>;
-    _makeSellOrder({ asset, quantity, accountAddress, startAmount, endAmount, listingTime, expirationTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress }: {
+    _makeSellOrder({ asset, quantity, accountAddress, startAmount, endAmount, listingTime, expirationTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, }: {
         asset: Asset;
         quantity: number;
         accountAddress: string;
@@ -621,14 +614,14 @@ export declare class OpenSeaPort {
         extraBountyBasisPoints: number;
         buyerAddress: string;
     }): Promise<UnhashedOrder>;
-    _getStaticCallTargetAndExtraData({ asset, useTxnOriginStaticCall }: {
+    _getStaticCallTargetAndExtraData({ asset, useTxnOriginStaticCall, }: {
         asset: OpenSeaAsset;
         useTxnOriginStaticCall: boolean;
     }): Promise<{
         staticTarget: string;
         staticExtradata: string;
     }>;
-    _makeBundleBuyOrder({ assets, collection, quantities, accountAddress, startAmount, expirationTime, paymentTokenAddress, extraBountyBasisPoints, sellOrder, referrerAddress }: {
+    _makeBundleBuyOrder({ assets, collection, quantities, accountAddress, startAmount, expirationTime, paymentTokenAddress, extraBountyBasisPoints, sellOrder, referrerAddress, }: {
         assets: Asset[];
         collection?: {
             slug: string;
@@ -642,7 +635,7 @@ export declare class OpenSeaPort {
         sellOrder?: UnhashedOrder;
         referrerAddress?: string;
     }): Promise<UnhashedOrder>;
-    _makeBundleSellOrder({ bundleName, bundleDescription, bundleExternalLink, assets, collection, quantities, accountAddress, startAmount, endAmount, listingTime, expirationTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress }: {
+    _makeBundleSellOrder({ bundleName, bundleDescription, bundleExternalLink, assets, collection, quantities, accountAddress, startAmount, endAmount, listingTime, expirationTime, waitForHighestBid, englishAuctionReservePrice, paymentTokenAddress, extraBountyBasisPoints, buyerAddress, }: {
         bundleName: string;
         bundleDescription?: string;
         bundleExternalLink?: string;
@@ -662,7 +655,7 @@ export declare class OpenSeaPort {
         extraBountyBasisPoints: number;
         buyerAddress: string;
     }): Promise<UnhashedOrder>;
-    _makeMatchingOrder({ order, accountAddress, recipientAddress }: {
+    _makeMatchingOrder({ order, accountAddress, recipientAddress, }: {
         order: UnsignedOrder;
         accountAddress: string;
         recipientAddress: string;
@@ -677,18 +670,18 @@ export declare class OpenSeaPort {
      * @param shouldValidateSell Whether to validate the sell order individually.
      * @param retries How many times to retry if validation fails
      */
-    _validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell }: {
+    _validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell, }: {
         buy: Order;
         sell: Order;
         accountAddress: string;
         shouldValidateBuy?: boolean;
         shouldValidateSell?: boolean;
     }, retries?: number): Promise<boolean>;
-    _createEmailWhitelistEntry({ order, buyerEmail }: {
+    _createEmailWhitelistEntry({ order, buyerEmail, }: {
         order: UnhashedOrder;
         buyerEmail: string;
     }): Promise<void>;
-    _sellOrderValidationAndApprovals({ order, accountAddress }: {
+    _sellOrderValidationAndApprovals({ order, accountAddress, }: {
         order: UnhashedOrder;
         accountAddress: string;
     }): Promise<void>;
@@ -698,15 +691,15 @@ export declare class OpenSeaPort {
      * @param order Order to approve
      * @returns Transaction hash of the approval transaction
      */
-    _approveOrder(order: UnsignedOrder): Promise<string>;
+    _approveOrder(order: UnsignedOrder): Promise<ethers.providers.TransactionResponse>;
     _validateOrder(order: Order): Promise<boolean>;
-    _approveAll({ schemaNames, wyAssets, accountAddress, proxyAddress }: {
+    _approveAll({ schemaNames, wyAssets, accountAddress, proxyAddress, }: {
         schemaNames: WyvernSchemaName[];
         wyAssets: WyvernAsset[];
         accountAddress: string;
         proxyAddress?: string;
     }): Promise<(string | null)[]>;
-    _buyOrderValidationAndApprovals({ order, counterOrder, accountAddress }: {
+    _buyOrderValidationAndApprovals({ order, counterOrder, accountAddress, }: {
         order: UnhashedOrder;
         counterOrder?: Order;
         accountAddress: string;
@@ -718,7 +711,7 @@ export declare class OpenSeaPort {
      * @param wyAsset asset to check. If fungible, the `quantity` attribute will be the minimum amount to own
      * @param schemaName WyvernSchemaName for the asset
      */
-    _ownsAssetOnChain({ accountAddress, proxyAddress, wyAsset, schemaName }: {
+    _ownsAssetOnChain({ accountAddress, proxyAddress, wyAsset, schemaName, }: {
         accountAddress: string;
         proxyAddress?: string | null;
         wyAsset: WyvernAsset;

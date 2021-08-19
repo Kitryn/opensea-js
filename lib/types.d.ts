@@ -1,7 +1,7 @@
-import BigNumber from 'bignumber.js';
-import * as Web3 from 'web3';
-import { Network, HowToCall, ECSignature, Order as WyvernOrder } from 'wyvern-js/lib/types';
-import { Token } from 'wyvern-schemas/dist/types';
+import { BigNumber } from "@0x/utils";
+import { AbiType, ConstructorStateMutability } from "ethereum-types";
+import { Network, HowToCall, ECSignature, Order as WyvernOrder } from "wyvern-js/lib/types";
+import { Token } from "wyvern-schemas/dist/types";
 export { Network, HowToCall, ECSignature };
 /**
  * Events emitted by the SDK. There are five types:
@@ -158,7 +158,19 @@ export interface WyvernBundle {
     description?: string;
     external_link?: string;
 }
-export declare type WyvernAtomicMatchParameters = [string[], BigNumber[], Array<(number | BigNumber)>, string, string, string, string, string, string, Array<(number | BigNumber)>, string[]];
+export declare type WyvernAtomicMatchParameters = [
+    string[],
+    BigNumber[],
+    Array<number | BigNumber>,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    Array<number | BigNumber>,
+    string[]
+];
 /**
  * The OpenSea account object appended to orders, providing extra metadata, profile images and usernames
  */
@@ -494,20 +506,17 @@ export interface OrderbookResponse {
     orders: OrderJSON[];
     count: number;
 }
-export declare type Web3Callback<T> = (err: Error | null, result: T) => void;
-export declare type Web3RPCCallback = Web3Callback<Web3.JSONRPCResponsePayload>;
-export declare type TxnCallback = (result: boolean) => void;
 /**
  * To simplify typifying ABIs
  */
 export interface PartialAbiDefinition {
-    type: Web3.AbiType | string;
+    type: AbiType | string;
     name?: string;
     inputs?: object[];
     outputs?: object[];
     payable?: boolean;
     constant?: boolean;
     anonymous?: boolean;
-    stateMutability?: Web3.ConstructorStateMutability | string;
+    stateMutability?: ConstructorStateMutability | string;
 }
 export declare type PartialReadonlyContractAbi = Array<Readonly<PartialAbiDefinition>>;

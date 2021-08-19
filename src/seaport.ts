@@ -3,7 +3,7 @@ import { WyvernProtocol } from "wyvern-js";
 import * as WyvernSchemas from "wyvern-schemas";
 import { Schema } from "wyvern-schemas/dist/types";
 import * as _ from "lodash";
-import { OpenSeaAPI } from "./api/api";
+import { OpenSeaAPI } from "./api";
 import {
   CanonicalWETH,
   ERC20,
