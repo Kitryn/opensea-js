@@ -50,7 +50,7 @@ import {
   ENS_RINKEBY_SHORT_NAME_OWNER,
   WETH_ADDRESS,
 } from "../constants";
-import { testFeesMakerOrder } from "./fees";
+import { testFeesMakerOrder } from "./fees.test";
 import {
   ENJIN_ADDRESS,
   INVERSE_BASIS_POINT,

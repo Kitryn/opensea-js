@@ -1,12 +1,10 @@
-import { assert } from "chai";
-
-import { before } from "mocha";
-
-import { suite, test } from "mocha-typescript";
-
 import { OpenSeaPort } from "../../src/index";
-import * as Web3 from "web3";
-import { Network, WyvernSchemaName, UnhashedOrder } from "../../src/types";
+import {
+  Network,
+  WyvernSchemaName,
+  UnhashedOrder,
+  OpenSeaCollection,
+} from "../../src/types";
 import {
   ALEX_ADDRESS,
   DIGITAL_ART_CHAIN_ADDRESS,
@@ -24,18 +22,23 @@ import {
   CRYPTOVOXELS_WEARABLE_2_ID,
   WETH_ADDRESS,
 } from "../constants";
-import { testFeesMakerOrder } from "./fees";
+import { testFeesMakerOrder } from "./fees.test";
 import { testMatchingNewOrder } from "./orders";
 import {
   MAINNET_PROVIDER_URL,
   NULL_ADDRESS,
   ENJIN_ADDRESS,
 } from "../../src/constants";
+import { ethers, providers } from "ethers";
 
-const provider = new Web3.providers.HttpProvider(MAINNET_PROVIDER_URL);
+const provider = new ethers.providers.JsonRpcProvider(MAINNET_PROVIDER_URL);
+const signer = new ethers.VoidSigner(
+  "0x000000000000000000000000000000000000dEaD",
+  provider
+);
 
 const client = new OpenSeaPort(
-  provider,
+  signer,
   {
     networkName: Network.Main,
     apiKey: MAINNET_API_KEY,
@@ -109,8 +112,8 @@ const homogenousSemiFungibleAssetsForBundleOrder = [
 
 let manaAddress: string;
 
-suite("seaport: bundles", () => {
-  before(async () => {
+describe("seaport: bundles", () => {
+  beforeAll(async () => {
     manaAddress = (await client.api.getPaymentTokens({ symbol: "MANA" }))
       .tokens[0].address;
   });
@@ -130,10 +133,10 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: WETH_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, WETH_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(WETH_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testBundleMetadata(order, WyvernSchemaName.ERC721);
     testFeesMakerOrder(order, undefined);
 
@@ -165,10 +168,12 @@ suite("seaport: bundles", () => {
 
     const asset = await client.api.getAsset(assets[0]);
 
-    assert.equal(order.paymentToken, manaAddress);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInToken);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(manaAddress);
+    expect(order.basePrice.toNumber()).toEqual(
+      Math.pow(10, 18) * amountInToken
+    );
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testBundleMetadata(order, WyvernSchemaName.ERC721);
     testFeesMakerOrder(order, asset.collection);
 
@@ -197,10 +202,10 @@ suite("seaport: bundles", () => {
       buyerAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testBundleMetadata(order, WyvernSchemaName.ERC721);
     testFeesMakerOrder(order, undefined, bountyPercent * 100);
 
@@ -238,10 +243,10 @@ suite("seaport: bundles", () => {
 
     const asset = await client.api.getAsset(assets[0]);
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testBundleMetadata(order, WyvernSchemaName.ERC721);
     testFeesMakerOrder(order, asset.collection, bountyPercent * 100);
 
@@ -271,14 +276,13 @@ suite("seaport: bundles", () => {
       buyerAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, token.address);
-    assert.equal(
-      order.basePrice.toNumber(),
+    expect(order.paymentToken).toEqual(token.address);
+    expect(order.basePrice.toNumber()).toEqual(
       Math.pow(10, token.decimals) * amountInToken
     );
-    assert.equal(order.extra.toNumber(), 0);
+    expect(order.extra.toNumber()).toEqual(0);
     testBundleMetadata(order, WyvernSchemaName.ERC721);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
     // Make sure match is valid
@@ -306,10 +310,10 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.expirationTime.toNumber(), expirationTime);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.expirationTime.toNumber()).toEqual(expirationTime);
     testBundleMetadata(order, WyvernSchemaName.ERC721);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
@@ -336,8 +340,8 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
     testBundleMetadata(order, WyvernSchemaName.ERC20);
     testFeesMakerOrder(order, undefined);
 
@@ -367,8 +371,8 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
     testBundleMetadata(order, WyvernSchemaName.ERC1155);
     testFeesMakerOrder(order, undefined);
 
@@ -402,8 +406,8 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
     testBundleMetadata(order, WyvernSchemaName.ERC1155);
     testFeesMakerOrder(order, asset.collection);
 
@@ -436,8 +440,8 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: NULL_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
     testFeesMakerOrder(order, undefined);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
@@ -465,10 +469,10 @@ suite("seaport: bundles", () => {
       paymentTokenAddress: WETH_ADDRESS,
     });
 
-    assert.equal(order.paymentToken, WETH_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(WETH_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, undefined);
 
     await client._buyOrderValidationAndApprovals({ order, accountAddress });
@@ -481,11 +485,11 @@ function testBundleMetadata(
   order: UnhashedOrder,
   schemaName: WyvernSchemaName
 ) {
-  assert.containsAllKeys(order.metadata, ["bundle"]);
+  expect(order.metadata).toHaveProperty("bundle");
   if (!("bundle" in order.metadata)) {
     return;
   }
-  assert.isNotEmpty(order.metadata.bundle.assets);
+  expect(order.metadata.bundle.assets.length).toBeGreaterThan(0);
   const expectedSchemas = order.metadata.bundle.assets.map((a) => schemaName);
-  assert.deepEqual(order.metadata.bundle.schemas, expectedSchemas);
+  expect(order.metadata.bundle.schemas).toEqual(expectedSchemas);
 }

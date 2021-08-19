@@ -6,7 +6,7 @@
         "outDir": "lib",
         "noImplicitThis": true,
         "module": "commonjs",
-        "target": "es5",
+        "target": "ES2020",
         // "types": ["node"],
         // "lib": ["es2017", "dom"],
         "sourceMap": true,
