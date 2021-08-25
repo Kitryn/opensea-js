@@ -162,7 +162,7 @@ export class OpenSeaPort {
   ) {
     // API config
     apiConfig.networkName = apiConfig.networkName || Network.Main;
-    apiConfig.gasPrice = apiConfig.gasPrice || makeBigNumber(300000);
+    // apiConfig.gasPrice = apiConfig.gasPrice || makeBigNumber(300000);
     this.api = new OpenSeaAPI(apiConfig);
 
     this._networkName = apiConfig.networkName;
@@ -177,7 +177,7 @@ export class OpenSeaPort {
     // WyvernJS config
     this._wyvernProtocol = new WyvernProtocol(this.signer, {
       network: this._networkName,
-      gasPrice: apiConfig.gasPrice,
+      // gasPrice: apiConfig.gasPrice,
     });
 
     // WrappedNFTLiquidationProxy Config
