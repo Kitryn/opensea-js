@@ -2,8 +2,10 @@ import { OpenSeaAPI } from "../src/api";
 import { Network } from "../src/types";
 import { CK_ADDRESS, CK_RINKEBY_ADDRESS } from "../src/constants";
 
-export const MAINNET_API_KEY = "testKeyMainnet";
-export const RINKEBY_API_KEY = "testKeyRinkeby";
+// export const MAINNET_API_KEY = "testKeyMainnet";
+export const MAINNET_API_KEY = "2f6f419a083c46de9d83ce3dbe7db601"; // from website
+// export const RINKEBY_API_KEY = "testKeyRinkeby";
+export const RINKEBY_API_KEY = "2f6f419a083c46de9d83ce3dbe7db601"; // from website
 
 export const mainApi = new OpenSeaAPI(
   {
