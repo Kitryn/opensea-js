@@ -19,6 +19,7 @@
         "pretty": true,
         "strict": true,
         "baseUrl": ".",
+        "resolveJsonModule": true
         // "paths": {
         //     "buffer" : ["./buffer-override.d.ts"]
         // }

@@ -1,11 +1,4 @@
-import { assert } from "chai";
-
-import { before } from "mocha";
-
-import { suite, test } from "mocha-typescript";
-
 import { OpenSeaPort } from "../../src/index";
-import * as Web3 from "web3";
 import {
   Network,
   WyvernSchemaName,
@@ -41,14 +34,20 @@ import {
   ENJIN_LEGACY_ADDRESS,
   MAINNET_PROVIDER_URL,
   MAX_UINT_256,
+  NULL_ADDRESS,
   RINKEBY_PROVIDER_URL,
 } from "../../src/constants";
+import { ethers } from "ethers";
 
-const provider = new Web3.providers.HttpProvider(MAINNET_PROVIDER_URL);
-const rinkebyProvider = new Web3.providers.HttpProvider(RINKEBY_PROVIDER_URL);
+const provider = new ethers.providers.JsonRpcProvider(MAINNET_PROVIDER_URL);
+const rinkebyProvider = new ethers.providers.JsonRpcProvider(
+  RINKEBY_PROVIDER_URL
+);
+const signer = new ethers.VoidSigner(NULL_ADDRESS, provider);
+const rinkebySigner = new ethers.VoidSigner(NULL_ADDRESS, rinkebyProvider);
 
 const client = new OpenSeaPort(
-  provider,
+  signer,
   {
     networkName: Network.Main,
     apiKey: MAINNET_API_KEY,
@@ -57,7 +56,7 @@ const client = new OpenSeaPort(
 );
 
 const rinkebyClient = new OpenSeaPort(
-  rinkebyProvider,
+  rinkebySigner,
   {
     networkName: Network.Rinkeby,
     apiKey: RINKEBY_API_KEY,
@@ -67,8 +66,8 @@ const rinkebyClient = new OpenSeaPort(
 
 let manaAddress: string;
 
-suite("seaport: owners and transfers", () => {
-  before(async () => {
+describe("seaport: owners and transfers", () => {
+  beforeAll(async () => {
     manaAddress = (await client.api.getPaymentTokens({ symbol: "MANA" }))
       .tokens[0].address;
   });
@@ -87,9 +86,9 @@ suite("seaport: owners and transfers", () => {
         wyAsset: wyAssetRinkeby,
         schemaName,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(error.message, "Unable to get current owner");
+      expect(error.message).toMatch("Unable to get current owner");
     }
   });
 
@@ -107,7 +106,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset,
       schemaName,
     });
-    assert.isTrue(isOwner);
+    expect(isOwner).toBe(true);
 
     // Non-ownership
     const isOwner2 = await client._ownsAssetOnChain({
@@ -115,7 +114,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset,
       schemaName,
     });
-    assert.isFalse(isOwner2);
+    expect(isOwner2).toBe(false);
   });
 
   test("On-chain ownership correctly pulled for ERC20s", async () => {
@@ -132,7 +131,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset,
       schemaName,
     });
-    assert.isTrue(isOwner);
+    expect(isOwner).toBe(true);
 
     // Not enough ownership
     const isOwner2 = await client._ownsAssetOnChain({
@@ -140,7 +139,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset: { ...wyAsset, quantity: MAX_UINT_256.toString() },
       schemaName,
     });
-    assert.isFalse(isOwner2);
+    expect(isOwner2).toBe(false);
 
     // Non-ownership
     const isOwner3 = await client._ownsAssetOnChain({
@@ -148,7 +147,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset,
       schemaName,
     });
-    assert.isFalse(isOwner3);
+    expect(isOwner3).toBe(false);
   });
 
   test("On-chain ownership correctly pulled for ERC1155s", async () => {
@@ -165,7 +164,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset: wyAssetNFT,
       schemaName,
     });
-    assert.isTrue(isOwner);
+    expect(isOwner).toBe(true);
 
     // Non-ownership
     const isOwner2 = await client._ownsAssetOnChain({
@@ -173,7 +172,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset: wyAssetNFT,
       schemaName,
     });
-    assert.isFalse(isOwner2);
+    expect(isOwner2).toBe(false);
 
     // Ownership of FT
     const wyAssetFT: WyvernFTAsset = {
@@ -186,7 +185,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset: wyAssetFT,
       schemaName,
     });
-    assert.isTrue(isOwner3);
+    expect(isOwner3).toBe(true);
 
     // Not enough ownership
     const isOwner5 = await client._ownsAssetOnChain({
@@ -194,7 +193,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset: { ...wyAssetFT, quantity: MAX_UINT_256.toString() },
       schemaName,
     });
-    assert.isFalse(isOwner5);
+    expect(isOwner5).toBe(false);
 
     // Non-ownership
     const isOwner4 = await client._ownsAssetOnChain({
@@ -202,7 +201,7 @@ suite("seaport: owners and transfers", () => {
       wyAsset: wyAssetFT,
       schemaName,
     });
-    assert.isFalse(isOwner4);
+    expect(isOwner4).toBe(false);
   });
 
   test("ERC-721v3 asset locked in contract is not transferrable", async () => {
@@ -214,7 +213,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: ALEX_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isNotTrue(isTransferrable);
+    expect(isTransferrable).not.toBe(true);
   });
 
   test("ERC-721 v3 asset not owned by fromAddress is not transferrable", async () => {
@@ -226,7 +225,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: ALEX_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isNotTrue(isTransferrable);
+    expect(isTransferrable).not.toBe(true);
   });
 
   test("ERC-721 v3 asset owned by fromAddress is transferrable", async () => {
@@ -238,7 +237,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: ALEX_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isTrue(isTransferrable);
+    expect(isTransferrable).toBe(true);
   });
 
   test("ERC-721 v1 asset owned by fromAddress is transferrable", async () => {
@@ -251,7 +250,7 @@ suite("seaport: owners and transfers", () => {
       toAddress: ALEX_ADDRESS,
       useProxy: true,
     });
-    assert.isTrue(isTransferrable);
+    expect(isTransferrable).toBe(true);
   });
 
   test("ERC-20 asset not owned by fromAddress is not transferrable", async () => {
@@ -264,7 +263,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: RANDOM_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isNotTrue(isTransferrable);
+    expect(isTransferrable).not.toBe(true);
   });
 
   test("ERC-20 asset owned by fromAddress is transferrable", async () => {
@@ -278,7 +277,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: ALEX_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isTrue(isTransferrable);
+    expect(isTransferrable).toBe(true);
   });
 
   test("ERC-1155 asset locked in contract is not transferrable", async () => {
@@ -291,7 +290,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: ALEX_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isNotTrue(isTransferrable2);
+    expect(isTransferrable2).not.toBe(true);
   });
 
   test("ERC-1155 asset not owned by fromAddress is not transferrable", async () => {
@@ -304,7 +303,7 @@ suite("seaport: owners and transfers", () => {
       fromAddress: DEVIN_ADDRESS,
       toAddress: ALEX_ADDRESS_2,
     });
-    assert.isNotTrue(isTransferrable);
+    expect(isTransferrable).not.toBe(true);
   });
 
   test("Rinkeby ERC-1155 asset owned by fromAddress is transferrable", async () => {
@@ -317,6 +316,6 @@ suite("seaport: owners and transfers", () => {
       fromAddress: "0x61c461ecc993aadeb7e4b47e96d1b8cc37314b20",
       toAddress: ALEX_ADDRESS,
     });
-    assert.isTrue(isTransferrable);
+    expect(isTransferrable).toBe(true);
   });
 });

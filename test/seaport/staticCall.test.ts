@@ -1,10 +1,5 @@
 import * as WyvernSchemas from "wyvern-schemas";
-import { assert } from "chai";
-
-import { suite, test } from "mocha-typescript";
-
 import { OpenSeaPort } from "../../src/index";
-import * as Web3 from "web3";
 import { Network } from "../../src/types";
 import {
   ALEX_ADDRESS,
@@ -14,9 +9,9 @@ import {
   MAINNET_API_KEY,
   RINKEBY_API_KEY,
 } from "../constants";
-import { testFeesMakerOrder } from "./fees";
+import { testFeesMakerOrder } from "./fees.test";
 import { getMethod, StaticCheckTxOrigin } from "../../src/contracts";
-import { testMatchingNewOrder } from "./orders";
+import { testMatchingNewOrder } from "./orders.test";
 import {
   MAINNET_PROVIDER_URL,
   NULL_ADDRESS,
@@ -24,12 +19,17 @@ import {
   STATIC_CALL_TX_ORIGIN_ADDRESS,
 } from "../../src/constants";
 import { encodeCall } from "../../src/utils/schema";
+import { ethers } from "ethers";
 
-const provider = new Web3.providers.HttpProvider(MAINNET_PROVIDER_URL);
-const rinkebyProvider = new Web3.providers.HttpProvider(RINKEBY_PROVIDER_URL);
+const provider = new ethers.providers.JsonRpcProvider(MAINNET_PROVIDER_URL);
+const rinkebyProvider = new ethers.providers.JsonRpcProvider(
+  RINKEBY_PROVIDER_URL
+);
+const signer = new ethers.VoidSigner(NULL_ADDRESS, provider);
+const rinkebySigner = new ethers.VoidSigner(NULL_ADDRESS, rinkebyProvider);
 
 const client = new OpenSeaPort(
-  provider,
+  signer,
   {
     networkName: Network.Main,
     apiKey: MAINNET_API_KEY,
@@ -38,7 +38,7 @@ const client = new OpenSeaPort(
 );
 
 const rinkebyClient = new OpenSeaPort(
-  rinkebyProvider,
+  rinkebySigner,
   {
     networkName: Network.Rinkeby,
     apiKey: RINKEBY_API_KEY,
@@ -76,7 +76,7 @@ suite("seaport: static calls", () => {
       [takerAddress]
     );
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
     // Make sure match is valid
@@ -106,10 +106,12 @@ suite("seaport: static calls", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInToken);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(
+      Math.pow(10, 18) * amountInToken
+    );
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection, 0);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
@@ -141,10 +143,12 @@ suite("seaport: static calls", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInToken);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(
+      Math.pow(10, 18) * amountInToken
+    );
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection, 0);
 
     await rinkebyClient._sellOrderValidationAndApprovals({

@@ -1,11 +1,4 @@
-import { assert } from "chai";
-
-import { before } from "mocha";
-
-import { suite, test } from "mocha-typescript";
-
 import { OpenSeaPort } from "../../src/index";
-import * as Web3 from "web3";
 import {
   Network,
   OrderJSON,
@@ -50,7 +43,7 @@ import {
   ENS_RINKEBY_SHORT_NAME_OWNER,
   WETH_ADDRESS,
 } from "../constants";
-import { testFeesMakerOrder } from "./fees";
+import { testFeesMakerOrder } from "./fees.test";
 import {
   ENJIN_ADDRESS,
   INVERSE_BASIS_POINT,
@@ -59,15 +52,20 @@ import {
   OPENSEA_FEE_RECIPIENT,
   RINKEBY_PROVIDER_URL,
 } from "../../src/constants";
+import { ethers } from "ethers";
 
 const ordersJSON = ordersJSONFixture as any;
 const englishSellOrderJSON = ordersJSON[0] as OrderJSON;
 
-const provider = new Web3.providers.HttpProvider(MAINNET_PROVIDER_URL);
-const rinkebyProvider = new Web3.providers.HttpProvider(RINKEBY_PROVIDER_URL);
+const provider = new ethers.providers.JsonRpcProvider(MAINNET_PROVIDER_URL);
+const rinkebyProvider = new ethers.providers.JsonRpcProvider(
+  RINKEBY_PROVIDER_URL
+);
+const signer = new ethers.VoidSigner(NULL_ADDRESS, provider);
+const rinkebySigner = new ethers.VoidSigner(NULL_ADDRESS, rinkebyProvider);
 
 const client = new OpenSeaPort(
-  provider,
+  signer,
   {
     networkName: Network.Main,
     apiKey: MAINNET_API_KEY,
@@ -76,7 +74,7 @@ const client = new OpenSeaPort(
 );
 
 const rinkebyClient = new OpenSeaPort(
-  rinkebyProvider,
+  rinkebySigner,
   {
     networkName: Network.Rinkeby,
     apiKey: RINKEBY_API_KEY,
@@ -97,8 +95,8 @@ const assetsForBulkTransfer = assetsForBundleOrder;
 let manaAddress: string;
 let daiAddress: string;
 
-suite("seaport: orders", () => {
-  before(async () => {
+describe("seaport: orders", () => {
+  beforeAll(async () => {
     daiAddress = (await client.api.getPaymentTokens({ symbol: "DAI" }))
       .tokens[0].address;
     manaAddress = (await client.api.getPaymentTokens({ symbol: "MANA" }))
@@ -108,17 +106,17 @@ suite("seaport: orders", () => {
   ordersJSON.map((orderJSON: OrderJSON, index: number) => {
     test("Order #" + index + " has correct types", () => {
       const order = orderFromJSON(orderJSON);
-      assert.instanceOf(order.basePrice, BigNumber);
-      assert.typeOf(order.hash, "string");
-      assert.typeOf(order.maker, "string");
-      assert.equal(+order.quantity, 1);
+      expect(order.basePrice).toBeInstanceOf(BigNumber);
+      expect(typeof order.hash).toEqual("string");
+      expect(typeof order.maker).toEqual("string");
+      expect(+order.quantity).toEqual(1);
     });
   });
 
   ordersJSON.map((orderJSON: OrderJSON, index: number) => {
     test("Order #" + index + " has correct hash", () => {
       const order = orderFromJSON(orderJSON);
-      assert.equal(order.hash, getOrderHash(order));
+      expect(order.hash).toEqual(getOrderHash(order));
     });
   });
 
@@ -146,7 +144,9 @@ suite("seaport: orders", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.quantity.toNumber(), quantity * Math.pow(10, decimals));
+    expect(order.quantity.toNumber()).toEqual(
+      quantity * Math.pow(10, decimals)
+    );
   });
 
   test("Correctly errors for invalid sell order price parameters", async () => {
@@ -168,10 +168,9 @@ suite("seaport: orders", () => {
         paymentTokenAddress,
         waitForHighestBid: true,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "English auctions must have an expiration time"
       );
     }
@@ -189,9 +188,9 @@ suite("seaport: orders", () => {
         paymentTokenAddress: NULL_ADDRESS,
         waitForHighestBid: true,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(error.message, "English auctions must use wrapped ETH");
+      expect(error.message).toMatch("English auctions must use wrapped ETH");
     }
 
     try {
@@ -207,10 +206,9 @@ suite("seaport: orders", () => {
         paymentTokenAddress: NULL_ADDRESS,
         waitForHighestBid: false,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "End price must be less than or equal to the start price"
       );
     }
@@ -228,10 +226,9 @@ suite("seaport: orders", () => {
         paymentTokenAddress: NULL_ADDRESS,
         waitForHighestBid: false,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "Expiration time must be set if order will change in price"
       );
     }
@@ -249,9 +246,9 @@ suite("seaport: orders", () => {
         paymentTokenAddress: NULL_ADDRESS,
         waitForHighestBid: false,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(error.message, "Listing time cannot be in the past");
+      expect(error.message).toMatch("Listing time cannot be in the past");
     }
 
     try {
@@ -267,10 +264,9 @@ suite("seaport: orders", () => {
         paymentTokenAddress,
         waitForHighestBid: true,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "Cannot schedule an English auction for the future"
       );
     }
@@ -288,10 +284,9 @@ suite("seaport: orders", () => {
         waitForHighestBid: false,
         englishAuctionReservePrice: 1,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "Reserve prices may only be set on English auctions"
       );
     }
@@ -309,10 +304,9 @@ suite("seaport: orders", () => {
         waitForHighestBid: true,
         englishAuctionReservePrice: 1,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "Reserve price must be greater than or equal to the start amount"
       );
     }
@@ -334,10 +328,9 @@ suite("seaport: orders", () => {
         expirationTime,
         paymentTokenAddress: NULL_ADDRESS,
       });
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "Offers must use wrapped ETH or an ERC-20 token"
       );
     }
@@ -368,22 +361,23 @@ suite("seaport: orders", () => {
       waitForHighestBid: true,
     });
 
-    assert.equal(order.taker, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInToken);
-    assert.equal(order.extra.toNumber(), 0);
+    expect(order.taker).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(
+      Math.pow(10, 18) * amountInToken
+    );
+    expect(order.extra.toNumber()).toEqual(0);
     // Make sure there's gap time to expire it
-    assert.isAbove(order.expirationTime.toNumber(), expirationTime);
+    expect(order.expirationTime.toNumber()).toEqual(expirationTime);
     // Make sure it's listed in the future
-    assert.equal(order.listingTime.toNumber(), expirationTime);
+    expect(order.listingTime.toNumber()).toEqual(expirationTime);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
     // Make sure match is impossible
     try {
       await testMatchingNewOrder(order, takerAddress, expirationTime + 100);
-      assert.fail();
+      throw new Error();
     } catch (error) {
-      assert.include(
-        error.message,
+      expect(error.message).toMatch(
         "Buy-side order is set in the future or expired"
       );
     }
@@ -404,32 +398,31 @@ suite("seaport: orders", () => {
       maker: makerAddress,
     });
     const buy = orders[0];
-    assert.isDefined(buy);
-    assert.isDefined(buy.asset);
+
+    expect(buy).toBeDefined();
+    expect(buy.asset).toBeDefined();
     if (!buy || !buy.asset) {
       return;
     }
     // Make sure it's listed in the past
-    assert.isBelow(buy.listingTime.toNumber(), now);
+    expect(buy.listingTime.toNumber()).toBeLessThan(now);
     testFeesMakerOrder(buy, buy.asset.collection);
 
     const sell = orderFromJSON(englishSellOrderJSON);
-    assert.equal(+sell.quantity, 1);
-    assert.equal(sell.feeRecipient, NULL_ADDRESS);
-    assert.equal(sell.paymentToken, paymentTokenAddress);
+    expect(+sell.quantity).toEqual(1);
+    expect(sell.feeRecipient).toEqual(NULL_ADDRESS);
+    expect(sell.paymentToken).toEqual(paymentTokenAddress);
 
     /* Requirements in Wyvern contract for funds transfer. */
-    assert.isAtMost(
-      buy.takerRelayerFee.toNumber(),
+    expect(buy.takerRelayerFee.toNumber()).toBeLessThanOrEqual(
       sell.takerRelayerFee.toNumber()
     );
-    assert.isAtMost(
-      buy.takerProtocolFee.toNumber(),
+    expect(buy.takerProtocolFee.toNumber()).toBeLessThanOrEqual(
       sell.takerProtocolFee.toNumber()
     );
     const sellPrice = await rinkebyClient.getCurrentPrice(sell);
     const buyPrice = await rinkebyClient.getCurrentPrice(buy);
-    assert.isAtLeast(buyPrice.toNumber(), sellPrice.toNumber());
+    expect(buyPrice.toNumber()).toBeGreaterThanOrEqual(sellPrice.toNumber());
     console.info(
       `Matching two orders that differ in price by ${
         buyPrice.toNumber() - sellPrice.toNumber()
@@ -450,7 +443,7 @@ suite("seaport: orders", () => {
       sell,
       accountAddress: matcherAddress,
     });
-    assert.isAbove(gas || 0, 0);
+    expect(gas || 0).toBeGreaterThan(0);
     console.info(`Match gas cost: ${gas}`);
   });
 
@@ -491,22 +484,18 @@ suite("seaport: orders", () => {
     });
 
     testFeesMakerOrder(buyOrder, asset.collection);
-    assert.equal(sellOrder.taker, NULL_ADDRESS);
-    assert.equal(buyOrder.taker, sellOrder.maker);
-    assert.equal(
-      buyOrder.makerRelayerFee.toNumber(),
+    expect(sellOrder.taker).toEqual(NULL_ADDRESS);
+    expect(buyOrder.taker).toEqual(sellOrder.maker);
+    expect(buyOrder.makerRelayerFee.toNumber()).toEqual(
       sellOrder.makerRelayerFee.toNumber()
     );
-    assert.equal(
-      buyOrder.takerRelayerFee.toNumber(),
+    expect(buyOrder.takerRelayerFee.toNumber()).toEqual(
       sellOrder.takerRelayerFee.toNumber()
     );
-    assert.equal(
-      buyOrder.makerProtocolFee.toNumber(),
+    expect(buyOrder.makerProtocolFee.toNumber()).toEqual(
       sellOrder.makerProtocolFee.toNumber()
     );
-    assert.equal(
-      buyOrder.takerProtocolFee.toNumber(),
+    expect(buyOrder.takerProtocolFee.toNumber()).toEqual(
       sellOrder.takerProtocolFee.toNumber()
     );
 
@@ -537,7 +526,7 @@ suite("seaport: orders", () => {
       extraBountyBasisPoints: 0,
     });
     // TODO (joshuawu): Fill this test out after backend supports ENS short names.
-    // assert.equal(buyOrder, {})
+    // expect(buyOrder).toEqual({})
   });
 
   test("Matches a private sell order, doesn't for wrong taker", async () => {
@@ -563,10 +552,12 @@ suite("seaport: orders", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.paymentToken, NULL_ADDRESS);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInToken);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.paymentToken).toEqual(NULL_ADDRESS);
+    expect(order.basePrice.toNumber()).toEqual(
+      Math.pow(10, 18) * amountInToken
+    );
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection, bountyPercent * 100);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
@@ -579,7 +570,7 @@ suite("seaport: orders", () => {
       // It works!
       return;
     }
-    assert.fail();
+    throw new Error();
   });
 
   test("Matches a new dutch sell order of a small amount of ERC-20 item (DAI) for ETH", async () => {
@@ -604,9 +595,9 @@ suite("seaport: orders", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.expirationTime.toNumber(), expirationTime);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.expirationTime.toNumber()).toEqual(expirationTime);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
     // Make sure match is valid
@@ -635,9 +626,9 @@ suite("seaport: orders", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInEth);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.basePrice.toNumber()).toEqual(Math.pow(10, 18) * amountInEth);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
@@ -666,11 +657,13 @@ suite("seaport: orders", () => {
       extraBountyBasisPoints: 0,
     });
 
-    assert.equal(order.taker, NULL_ADDRESS);
-    assert.equal(order.paymentToken, paymentToken);
-    assert.equal(order.basePrice.toNumber(), Math.pow(10, 18) * amountInToken);
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.taker).toEqual(NULL_ADDRESS);
+    expect(order.paymentToken).toEqual(paymentToken);
+    expect(order.basePrice.toNumber()).toEqual(
+      Math.pow(10, 18) * amountInToken
+    );
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection);
 
     await client._buyOrderValidationAndApprovals({ order, accountAddress });
@@ -703,13 +696,12 @@ suite("seaport: orders", () => {
       waitForHighestBid: false,
     });
 
-    assert.equal(order.paymentToken, paymentToken.address);
-    assert.equal(
-      order.basePrice.toNumber(),
+    expect(order.paymentToken).toEqual(paymentToken.address);
+    expect(order.basePrice.toNumber()).toEqual(
       Math.pow(10, paymentToken.decimals) * amountInToken
     );
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection, bountyPercent * 100);
 
     await client._sellOrderValidationAndApprovals({ order, accountAddress });
@@ -739,14 +731,13 @@ suite("seaport: orders", () => {
       extraBountyBasisPoints: 0,
     });
 
-    assert.equal(order.taker, NULL_ADDRESS);
-    assert.equal(order.paymentToken, paymentToken.address);
-    assert.equal(
-      order.basePrice.toNumber(),
+    expect(order.taker).toEqual(NULL_ADDRESS);
+    expect(order.paymentToken).toEqual(paymentToken.address);
+    expect(order.basePrice.toNumber()).toEqual(
       Math.pow(10, paymentToken.decimals) * amountInToken
     );
-    assert.equal(order.extra.toNumber(), 0);
-    assert.equal(order.expirationTime.toNumber(), 0);
+    expect(order.extra.toNumber()).toEqual(0);
+    expect(order.expirationTime.toNumber()).toEqual(0);
     testFeesMakerOrder(order, asset.collection);
 
     await client._buyOrderValidationAndApprovals({ order, accountAddress });
@@ -762,12 +753,12 @@ suite("seaport: orders", () => {
       payment_token_address: manaAddress,
     });
 
-    assert.isNotNull(order.paymentTokenContract);
+    expect(order.paymentTokenContract).not.toBeNull();
     if (!order.paymentTokenContract) {
       return;
     }
-    assert.equal(order.paymentTokenContract.address, manaAddress);
-    assert.equal(order.paymentToken, manaAddress);
+    expect(order.paymentTokenContract.address).toEqual(manaAddress);
+    expect(order.paymentToken).toEqual(manaAddress);
     // TODO why can't we test atomicMatch?
     await testMatchingOrder(order, takerAddress, false);
   });
@@ -782,36 +773,36 @@ suite("seaport: orders", () => {
       toAddress: takerAddress,
     });
 
-    assert.isAbove(gas, 0);
+    expect(gas).toBeGreaterThan(0);
   });
 
   test("Fungible tokens filter", async () => {
     const manaTokens = (await client.api.getPaymentTokens({ symbol: "MANA" }))
       .tokens;
-    assert.equal(manaTokens.length, 1);
+    expect(manaTokens.length).toEqual(1);
     const mana = manaTokens[0];
-    assert.isNotNull(mana);
-    assert.equal(mana.name, "Decentraland MANA");
-    assert.equal(mana.address, "0x0f5d2fb29fb7d3cfee444a200298f468908cc942");
-    assert.equal(mana.decimals, 18);
+    expect(mana).not.toBeNull();
+    expect(mana.name).toEqual("Decentraland MANA");
+    expect(mana.address).toEqual("0x0f5d2fb29fb7d3cfee444a200298f468908cc942");
+    expect(mana.decimals).toEqual(18);
 
     const dai = (await client.api.getPaymentTokens({ symbol: "DAI" }))
       .tokens[0];
-    assert.isNotNull(dai);
-    assert.equal(dai.name, "Dai Stablecoin");
-    assert.equal(dai.decimals, 18);
+    expect(dai).not.toBeNull();
+    expect(dai.name).toEqual("Dai Stablecoin");
+    expect(dai.decimals).toEqual(18);
 
     const all = await client.api.getPaymentTokens();
-    assert.isNotEmpty(all);
+    expect(all.tokens.length).toBeGreaterThan(0);
   });
 
   test("orderToJSON computes correct current price for Dutch auctions", async () => {
     const { orders } = await client.api.getOrders({
       sale_kind: SaleKind.DutchAuction,
     });
-    assert.equal(orders.length, client.api.pageSize);
+    expect(orders.length).toEqual(client.api.pageSize);
     orders.map((order) => {
-      assert.isNotNull(order.currentPrice);
+      expect(order.currentPrice).not.toBeNull();
       const buyerFeeBPS = order.asset
         ? order.asset.assetContract.buyerFeeBasisPoints
         : order.assetBundle && order.assetBundle.assetContract
@@ -826,12 +817,10 @@ suite("seaport: orders", () => {
           ? +order.takerRelayerFee / INVERSE_BASIS_POINT + 1
           : 1;
       // Possible race condition
-      assert.equal(
-        order.currentPrice.toPrecision(3),
+      expect(order.currentPrice.toPrecision(3)).toEqual(
         estimateCurrentPrice(order).toPrecision(3)
       );
-      assert.isAtLeast(
-        order.basePrice.times(multiple).toNumber(),
+      expect(order.basePrice.times(multiple).toNumber()).toBeGreaterThanOrEqual(
         order.currentPrice.toNumber()
       );
     });
@@ -845,17 +834,16 @@ suite("seaport: orders", () => {
       side: OrderSide.Sell,
       is_english: false,
     });
-    assert.isNotEmpty(orders);
+    expect(orders.length).toBeGreaterThan(0);
     orders.map((order) => {
-      assert.isNotNull(order.currentPrice);
-      assert.isNotNull(order.asset);
+      expect(order.currentPrice).not.toBeNull();
+      expect(order.asset).not.toBeNull();
       if (!order.currentPrice || !order.asset) {
         return;
       }
       const buyerFeeBPS = order.takerRelayerFee;
       const multiple = +buyerFeeBPS / INVERSE_BASIS_POINT + 1;
-      assert.equal(
-        order.basePrice.times(multiple).toNumber(),
+      expect(order.basePrice.times(multiple).toNumber()).toEqual(
         estimateCurrentPrice(order).toNumber()
       );
     });
@@ -866,15 +854,14 @@ suite("seaport: orders", () => {
       side: OrderSide.Sell,
       is_english: true,
     });
-    assert.isNotEmpty(orders);
+    expect(orders.length).toBeGreaterThan(0);
     orders.map((order) => {
-      assert.isNotNull(order.currentPrice);
-      assert.isNotNull(order.asset);
+      expect(order.currentPrice).not.toBeNull();
+      expect(order.asset).not.toBeNull();
       if (!order.currentPrice || !order.asset) {
         return;
       }
-      assert.equal(
-        order.basePrice.toNumber(),
+      expect(order.basePrice.toNumber()).toEqual(
         estimateCurrentPrice(order).toNumber()
       );
     });
@@ -882,12 +869,12 @@ suite("seaport: orders", () => {
 
   test.skip("Matches first buy order in book", async () => {
     const order = await client.api.getOrder({ side: OrderSide.Buy });
-    assert.isNotNull(order);
+    expect(order).not.toBeNull();
     if (!order) {
       return;
     }
     const assetOrBundle = order.asset || order.assetBundle;
-    assert.isNotNull(assetOrBundle);
+    expect(assetOrBundle).not.toBeNull();
     if (!assetOrBundle) {
       return;
     }
@@ -906,11 +893,11 @@ suite("seaport: orders", () => {
       // Use a token that has already been approved via approve-all
       asset_contract_address: DIGITAL_ART_CHAIN_ADDRESS,
     });
-    assert.isNotNull(order);
+    expect(order).not.toBeNull();
     if (!order) {
       return;
     }
-    assert.isNotNull(order.asset);
+    expect(order.asset).not.toBeNull();
     if (!order.asset) {
       return;
     }
@@ -925,13 +912,13 @@ suite("seaport: orders", () => {
     });
 
     const asset = assets.filter((a) => !!a.sellOrders)[0];
-    assert.isNotNull(asset);
+    expect(asset).not.toBeNull();
     if (!asset || !asset.sellOrders) {
       return;
     }
 
     const order = asset.sellOrders[0];
-    assert.isNotNull(order);
+    expect(order).not.toBeNull();
     if (!order) {
       return;
     }
@@ -956,30 +943,33 @@ export async function testMatchingOrder(
     accountAddress,
     recipientAddress,
   });
-  assert.equal(matchingOrder.hash, getOrderHash(matchingOrder));
+  expect(matchingOrder.hash).toEqual(getOrderHash(matchingOrder));
 
   const { buy, sell } = assignOrdersToSides(order, matchingOrder);
 
   if (!order.waitingForBestCounterOrder) {
     const isValid = await client._validateMatch({ buy, sell, accountAddress });
-    assert.isTrue(isValid);
+    expect(isValid).toBe(true);
   } else {
     console.info(`English Auction detected, skipping validation`);
   }
 
   if (testAtomicMatch && !order.waitingForBestCounterOrder) {
     const isValid = await client._validateOrder(order);
-    assert.isTrue(isValid);
+    expect(isValid).toBe(true);
     const isFulfillable = await client.isOrderFulfillable({
       order,
       accountAddress,
       recipientAddress,
       referrerAddress,
     });
-    assert.isTrue(isFulfillable);
+    expect(isFulfillable).toBe(true);
     const gasPrice = await client._computeGasPrice();
     console.info(
-      `Gas price to use: ${client.web3.fromWei(gasPrice, "gwei")} gwei`
+      `Gas price to use: ${ethers.utils.formatUnits(
+        gasPrice.toFixed(),
+        "gwei"
+      )} gwei`
     );
   }
 }
@@ -1003,26 +993,23 @@ export async function testMatchingNewOrder(
     matchingOrder.listingTime = makeBigNumber(counterOrderListingTime);
     matchingOrder.hash = getOrderHash(matchingOrder);
   }
-  assert.equal(matchingOrder.hash, getOrderHash(matchingOrder));
+  expect(matchingOrder.hash).toEqual(getOrderHash(matchingOrder));
 
   // Test fees
-  assert.equal(matchingOrder.makerProtocolFee.toNumber(), 0);
-  assert.equal(matchingOrder.takerProtocolFee.toNumber(), 0);
+  expect(matchingOrder.makerProtocolFee.toNumber()).toEqual(0);
+  expect(matchingOrder.takerProtocolFee.toNumber()).toEqual(0);
   if (order.waitingForBestCounterOrder) {
-    assert.equal(matchingOrder.feeRecipient, OPENSEA_FEE_RECIPIENT);
+    expect(matchingOrder.feeRecipient).toEqual(OPENSEA_FEE_RECIPIENT);
   } else {
-    assert.equal(matchingOrder.feeRecipient, NULL_ADDRESS);
+    expect(matchingOrder.feeRecipient).toEqual(NULL_ADDRESS);
   }
-  assert.equal(
-    matchingOrder.makerRelayerFee.toNumber(),
+  expect(matchingOrder.makerRelayerFee.toNumber()).toEqual(
     order.makerRelayerFee.toNumber()
   );
-  assert.equal(
-    matchingOrder.takerRelayerFee.toNumber(),
+  expect(matchingOrder.takerRelayerFee.toNumber()).toEqual(
     order.takerRelayerFee.toNumber()
   );
-  assert.equal(
-    matchingOrder.makerReferrerFee.toNumber(),
+  expect(matchingOrder.makerReferrerFee.toNumber()).toEqual(
     order.makerReferrerFee.toNumber()
   );
 
@@ -1061,7 +1048,7 @@ export async function testMatchingNewOrder(
   }
 
   const isValid = await client._validateMatch({ buy, sell, accountAddress });
-  assert.isTrue(isValid);
+  expect(isValid).toBe(true);
 
   // Make sure assets are transferrable
   await Promise.all(
@@ -1078,10 +1065,11 @@ export async function testMatchingNewOrder(
         toAddress,
         useProxy,
       });
-      assert.isTrue(
-        isTransferrable,
-        `Not transferrable: ${asset.tokenAddress} # ${asset.tokenId} schema ${asset.schemaName} quantity ${quantity} from ${fromAddress} to ${toAddress} using proxy: ${useProxy}`
-      );
+      expect(isTransferrable).toBe(true);
+      // assert.isTrue(
+      //   isTransferrable,
+      //   `Not transferrable: ${asset.tokenAddress} # ${asset.tokenId} schema ${asset.schemaName} quantity ${quantity} from ${fromAddress} to ${toAddress} using proxy: ${useProxy}`
+      // );
     })
   );
 }
@@ -1102,8 +1090,8 @@ function getAssetsAndQuantities(
       ? [order.metadata.schema]
       : [];
 
-  assert.isNotEmpty(wyAssets);
-  assert.equal(wyAssets.length, schemaNames.length);
+  expect(wyAssets.length).toBeGreaterThan(0);
+  expect(wyAssets.length).toEqual(schemaNames.length);
 
   return wyAssets.map((wyAsset, i) => {
     const asset: Asset = {
