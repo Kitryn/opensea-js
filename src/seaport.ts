@@ -90,19 +90,21 @@ export class OpenSeaPort {
 
     this._networkName = apiConfig.networkName
 
-    const readonlyProvider = new Web3.providers.HttpProvider(this._networkName == Network.Main ? MAINNET_PROVIDER_URL : RINKEBY_PROVIDER_URL)
+    // const readonlyProvider = new Web3.providers.HttpProvider(this._networkName == Network.Main ? MAINNET_PROVIDER_URL : RINKEBY_PROVIDER_URL)
 
+    // We want to use our own endpoints even for the "readonly" providers. Note that this makes them no-longer readonly
     // Web3 Config
     this.web3 = new Web3(provider)
-    this.web3ReadOnly = new Web3(readonlyProvider)
+    this.web3ReadOnly = new Web3(provider)
 
     // WyvernJS config
     this._wyvernProtocol = new WyvernProtocol(provider, {
       network: this._networkName,
     })
 
+    // We want to use our own endpoints even for the "readonly" providers. Note that this makes them no-longer readonly
     // WyvernJS config for readonly (optimization for infura calls)
-    this._wyvernProtocolReadOnly = new WyvernProtocol(readonlyProvider, {
+    this._wyvernProtocolReadOnly = new WyvernProtocol(provider, {
       network: this._networkName,
     })
 
