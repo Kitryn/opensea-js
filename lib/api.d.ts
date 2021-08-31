@@ -1,4 +1,3 @@
-import 'isomorphic-unfetch';
 import { OpenSeaAPIConfig, OpenSeaAsset, OpenSeaAssetBundle, OpenSeaAssetBundleQuery, OpenSeaAssetQuery, OpenSeaFungibleToken, OpenSeaFungibleTokenQuery, Order, OrderJSON, OrderQuery } from './types';
 export declare class OpenSeaAPI {
     /**
@@ -18,6 +17,7 @@ export declare class OpenSeaAPI {
      */
     logger: (arg: string) => void;
     private apiKey;
+    private got;
     /**
      * Create an instance of the OpenSea API
      * @param config OpenSeaAPIConfig for setting up the API, including an optional API key, network name, and base URL
