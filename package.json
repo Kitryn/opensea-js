@@ -43,6 +43,7 @@
     "ethereumjs-abi": "git+https://github.com/ProjectWyvern/ethereumjs-abi.git",
     "ethereumjs-util": "^5.2.0",
     "fbemitter": "^2.1.1",
+    "got": "^11.8.2",
     "isomorphic-unfetch": "^2.1.1",
     "json-loader": "^0.5.7",
     "lodash": "^4.17.4",

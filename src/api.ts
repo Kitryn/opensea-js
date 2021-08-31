@@ -1,4 +1,4 @@
-import 'isomorphic-unfetch'
+import got, { Got, Options, Response } from "got"
 import * as QueryString from 'query-string'
 import {
   Network,
@@ -51,6 +51,7 @@ export class OpenSeaAPI {
   public logger: (arg: string) => void
 
   private apiKey: string | undefined
+  private got: Got
 
   /**
    * Create an instance of the OpenSea API
@@ -59,6 +60,7 @@ export class OpenSeaAPI {
    */
   constructor(config: OpenSeaAPIConfig, logger?: (arg: string) => void) {
     this.apiKey = config.apiKey
+    this.got = config.got ?? got
 
     switch (config.networkName) {
       case Network.Rinkeby:
@@ -310,7 +312,7 @@ export class OpenSeaAPI {
     const url = `${apiPath}?${qs}`
 
     const response = await this._fetch(url)
-    return response.json()
+    return JSON.parse(response.body as string) // typescript hax
   }
 
   /**
@@ -333,7 +335,7 @@ export class OpenSeaAPI {
     }
 
     const response = await this._fetch(apiPath, fetchOpts)
-    return response.json()
+    return JSON.parse(response.body as string) // typescript hax
   }
 
   /**
@@ -357,41 +359,45 @@ export class OpenSeaAPI {
    * @param opts RequestInit opts, similar to Fetch API
    */
   private async _fetch(apiPath: string, opts: RequestInit = {}) {
-
     const apiBase = this.apiBaseUrl
     const apiKey = this.apiKey
     const finalUrl = apiBase + apiPath
-    const finalOpts = {
-      ...opts,
+    // typescript hacks, clean up when have too much time
+    const finalOpts: Options = {
+      ...(opts as any),
       headers: {
         ...(apiKey ? { 'X-API-KEY': apiKey } : {}),
-        ...(opts.headers || {}),
-      }
+        ...((opts.headers as any) || {}),
+      },
+      throwHttpErrors: false
     }
 
     this.logger(`Sending request: ${finalUrl} ${JSON.stringify(finalOpts).substr(0, 100)}...`)
+    // typescript stuff
+    const res: Response<string> = await this.got(finalUrl, finalOpts) as Response<string>  // typescript hax...
+    return this._handleApiResponse(res)
+    // return fetch(finalUrl, finalOpts).then(async res => this._handleApiResponse(res))
 
-    return fetch(finalUrl, finalOpts).then(async res => this._handleApiResponse(res))
   }
 
   private async _handleApiResponse(response: Response) {
-    if (response.ok) {
-      this.logger(`Got success: ${response.status}`)
+    if (200 <= response.statusCode && response.statusCode < 300) {
+      this.logger(`Got success: ${response.statusCode}`)
       return response
     }
 
     let result
     let errorMessage
     try {
-      result = await response.text()
+      result = response.body as string;  // typescript hax, can fail if passed in a buffer probs
       result = JSON.parse(result)
     } catch {
       // Result will be undefined or text
     }
 
-    this.logger(`Got error ${response.status}: ${JSON.stringify(result)}`)
+    this.logger(`Got error ${response.statusCode}: ${JSON.stringify(result)}`)
 
-    switch (response.status) {
+    switch (response.statusCode) {
       case 400:
         errorMessage = result && result.errors
           ? result.errors.join(', ')
@@ -415,7 +421,7 @@ export class OpenSeaAPI {
         break
     }
 
-    throw new Error(`API Error ${response.status}: ${errorMessage}`)
+    throw new Error(`API Error ${response.statusCode}: ${errorMessage}`)
   }
 }
 

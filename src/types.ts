@@ -7,6 +7,7 @@ import {
   ECSignature,
   Order as WyvernOrder
 } from 'wyvern-js/lib/types'
+import { Got } from "got";
 
 import { Token } from 'wyvern-schemas/dist/types'
 
@@ -101,6 +102,7 @@ export interface OpenSeaAPIConfig {
   apiBaseUrl?: string
   // Sent to WyvernJS
   gasPrice?: BigNumber
+  got?: Got
 }
 
 /**
