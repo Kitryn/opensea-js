@@ -53,11 +53,6 @@
     "wyvern-js": "https://github.com/Kitryn/wyvern-js#provider-merge",
     "wyvern-schemas": "https://github.com/Kitryn/wyvern-schemas#provider-merge"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run lint && npm run build && git add lib/*"
-    }
-  },
   "devDependencies": {
     "@types/chai": "4.2.9",
     "@types/fbemitter": "^2.0.32",

@@ -2383,7 +2383,7 @@ export class OpenSeaPort {
 
       return true
 
-    } catch (error) {
+    } catch (error: any) {
 
       if (retries <= 0) {
         throw new Error(`Error matching this listing: ${error.message}. Please contact the maker or try again later!`)
@@ -2949,7 +2949,7 @@ export class OpenSeaPort {
 
       txnData.gas = this._correctGasAmount(gasEstimate)
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed atomic match with args: `, args, error)
       throw new Error(`Oops, the Ethereum network rejected this transaction :( The OpenSea devs have been alerted, but this problem is typically due an item being locked or untransferrable. The exact error was "${error.message.substr(0, MAX_ERROR_LENGTH)}..."`)
     }
@@ -2958,7 +2958,7 @@ export class OpenSeaPort {
     try {
       this.logger(`Fulfilling order with gas set to ${txnData.gas}`)
       txHash = await this._wyvernProtocol.wyvernExchange.atomicMatch_.sendTransactionAsync(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], txnData)
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
 
       this._dispatch(EventType.TransactionDenied, { error, buy, sell, accountAddress, matchMetadata: metadata })
@@ -3071,7 +3071,7 @@ export class OpenSeaPort {
       await confirmTransaction(this.web3, transactionHash)
       this.logger(`Transaction succeeded: ${description}`)
       this._dispatch(EventType.TransactionConfirmed, transactionEventData)
-    } catch (error) {
+    } catch (error: any) {
       this.logger(`Transaction failed: ${description}`)
       this._dispatch(EventType.TransactionFailed, {
         ...transactionEventData, error
