@@ -1066,6 +1066,38 @@ export class OpenSeaPort {
   }
 
   /**
+   * Check if a fungible token (e.g. WETH) is already approved
+   * @param param0 
+   * @returns 
+   */
+  public async checkFungibleTokenApproval(
+    { accountAddress,
+      tokenAddress,
+      proxyAddress,
+      minimumAmount = WyvernProtocol.MAX_UINT_256 }:
+    { accountAddress: string;
+      tokenAddress: string;
+      proxyAddress?: string;
+      minimumAmount?: BigNumber }
+  ): Promise<boolean> {
+    proxyAddress = proxyAddress || WyvernProtocol.getTokenTransferProxyAddress(this._networkName)
+
+    const approvedAmount = await this._getApprovedTokenCount({
+      accountAddress,
+      tokenAddress,
+      proxyAddress
+    })
+
+    if (approvedAmount.greaterThanOrEqualTo(minimumAmount)) {
+      this.logger('Already approved enough currency for trading')
+      return true
+    }
+
+    this.logger(`Not enough token approved for trade: ${approvedAmount} approved to transfer ${tokenAddress}`)
+    return false
+  }
+
+  /**
    * Approve a fungible token (e.g. W-ETH) for use in trades.
    * Called internally, but exposed for dev flexibility.
    * Checks to see if the minimum amount is already approved, first.
@@ -1834,6 +1866,8 @@ export class OpenSeaPort {
       tokenAddress = WyvernSchemas.tokens[this._networkName].canonicalWrappedEther.address
     }
     const addressToApprove = proxyAddress || WyvernProtocol.getTokenTransferProxyAddress(this._networkName)
+    // NOTE: the way this is implemented, if the JSONRPC call errors out for whatever reason,
+    // this library now thinks that the amount approved is 0!
     const approved = await rawCall(this.web3, {
       from: accountAddress,
       to: tokenAddress,
@@ -2617,7 +2651,12 @@ export class OpenSeaPort {
 
       // Check token approval
       // This can be done at a higher level to show UI
-      await this.approveFungibleToken({ accountAddress, tokenAddress, minimumAmount })
+      // await this.approveFungibleToken({ accountAddress, tokenAddress, minimumAmount })
+
+      const approved = this.checkFungibleTokenApproval({ accountAddress, tokenAddress, minimumAmount })
+      if (!approved) {
+        throw new Error('Payment token not approved! Approve amount first on site!')
+      }
     }
 
     // Check order formation

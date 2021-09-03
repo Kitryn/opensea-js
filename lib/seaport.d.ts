@@ -354,6 +354,17 @@ export declare class OpenSeaPort {
         schemaName?: WyvernSchemaName;
     }): Promise<string | null>;
     /**
+     * Check if a fungible token (e.g. WETH) is already approved
+     * @param param0
+     * @returns
+     */
+    checkFungibleTokenApproval({ accountAddress, tokenAddress, proxyAddress, minimumAmount }: {
+        accountAddress: string;
+        tokenAddress: string;
+        proxyAddress?: string;
+        minimumAmount?: BigNumber;
+    }): Promise<boolean>;
+    /**
      * Approve a fungible token (e.g. W-ETH) for use in trades.
      * Called internally, but exposed for dev flexibility.
      * Checks to see if the minimum amount is already approved, first.
