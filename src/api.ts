@@ -381,9 +381,9 @@ export class OpenSeaAPI {
     }
 
     const fetchOpts: FetchOpts = {
-      method: opts.method === "GET" ? "GET" : "POST",
+      method: opts.method === "POST" ? "POST" : "GET",
       headers,
-      ...(opts.body != null ? { data: opts.body } : {})
+      ...(opts.body != null ? { body: opts.body } : {})
     }
 
     this.logger(`Sending request: ${finalUrl} ${JSON.stringify(fetchOpts).substr(0, 100)}...`)
