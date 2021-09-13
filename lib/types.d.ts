@@ -1,7 +1,6 @@
 import BigNumber from 'bignumber.js';
 import * as Web3 from 'web3';
 import { Network, HowToCall, ECSignature, Order as WyvernOrder } from 'wyvern-js/lib/types';
-import { Got } from "got";
 import { Token } from 'wyvern-schemas/dist/types';
 export { Network, HowToCall, ECSignature };
 /**
@@ -74,7 +73,18 @@ export interface OpenSeaAPIConfig {
     apiKey?: string;
     apiBaseUrl?: string;
     gasPrice?: BigNumber;
-    got?: Got;
+    proxyFetch: (url: string, opts: FetchOpts) => Promise<Response>;
+}
+export interface FetchOpts {
+    method: "GET" | "POST";
+    headers?: string[];
+    body?: any;
+    userAgent?: string;
+}
+export interface Response {
+    statusCode: number;
+    data: any;
+    headers: any;
 }
 /**
  * Wyvern order side: buy or sell.

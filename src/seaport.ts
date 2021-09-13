@@ -81,7 +81,7 @@ export class OpenSeaPort {
    * @param logger logger, optional, a function that will be called with debugging
    *  information
    */
-  constructor(provider: Web3.Provider, apiConfig: OpenSeaAPIConfig = {}, logger?: (arg: string) => void) {
+  constructor(provider: Web3.Provider, apiConfig: OpenSeaAPIConfig, logger?: (arg: string) => void) {
 
     // API config
     apiConfig.networkName = apiConfig.networkName || Network.Main

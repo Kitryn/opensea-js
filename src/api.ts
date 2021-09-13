@@ -1,6 +1,7 @@
-import got, { Got, Options, Response } from "got"
 import * as QueryString from 'query-string'
 import {
+  FetchOpts,
+  Response,
   Network,
   OpenSeaAPIConfig,
   OpenSeaAsset,
@@ -51,7 +52,7 @@ export class OpenSeaAPI {
   public logger: (arg: string) => void
 
   private apiKey: string | undefined
-  private got: Got
+  proxyFetch: (url: string, opts: FetchOpts) => Promise<Response>
 
   /**
    * Create an instance of the OpenSea API
@@ -60,7 +61,7 @@ export class OpenSeaAPI {
    */
   constructor(config: OpenSeaAPIConfig, logger?: (arg: string) => void) {
     this.apiKey = config.apiKey
-    this.got = config.got ?? got
+    this.proxyFetch = config.proxyFetch;
 
     switch (config.networkName) {
       case Network.Rinkeby:
@@ -89,7 +90,7 @@ export class OpenSeaAPI {
     let json
     try {
       json = await this.post(`${ORDERBOOK_PATH}/orders/post/`, order) as OrderJSON
-    } catch (error) {
+    } catch (error: any) {
       _throwOrContinue(error, retries)
       await delay(3000)
       return this.postOrder(order, retries - 1)
@@ -202,7 +203,7 @@ export class OpenSeaAPI {
     let json
     try {
       json = await this.get(`${API_PATH}/asset/${tokenAddress}/${tokenId || 0}/`)
-    } catch (error) {
+    } catch (error: any) {
       _throwOrContinue(error, retries)
       await delay(1000)
       return this.getAsset({ tokenAddress, tokenId }, retries - 1)
@@ -254,7 +255,7 @@ export class OpenSeaAPI {
         limit: this.pageSize,
         offset: (page - 1) * this.pageSize
       })
-    } catch (error) {
+    } catch (error: any) {
       _throwOrContinue(error, retries)
       await delay(1000)
       return this.getPaymentTokens(query, page, retries - 1)
@@ -312,7 +313,11 @@ export class OpenSeaAPI {
     const url = `${apiPath}?${qs}`
 
     const response = await this._fetch(url)
-    return JSON.parse(response.body as string) // typescript hax
+    if (typeof response.data === "string") {
+      return JSON.parse(response.data)
+    } else {
+      return response.data
+    }
   }
 
   /**
@@ -335,7 +340,11 @@ export class OpenSeaAPI {
     }
 
     const response = await this._fetch(apiPath, fetchOpts)
-    return JSON.parse(response.body as string) // typescript hax
+    if (typeof response.data === "string") {
+      return JSON.parse(response.data)
+    } else {
+      return response.data
+    }
   }
 
   /**
@@ -345,36 +354,40 @@ export class OpenSeaAPI {
    * @param opts RequestInit opts, similar to Fetch API. If it contains
    *  a body, it won't be stringified.
    */
-  public async put(apiPath: string, body: object, opts: RequestInit = {}) {
+  // public async put(apiPath: string, body: object, opts: RequestInit = {}) {
 
-    return this.post(apiPath, body, {
-      method: 'PUT',
-      ...opts
-    })
-  }
+  //   return this.post(apiPath, body, {
+  //     method: 'PUT',
+  //     ...opts
+  //   })
+  // }
 
   /**
    * Get from an API Endpoint, sending auth token in headers
    * @param apiPath Path to URL endpoint under API
    * @param opts RequestInit opts, similar to Fetch API
    */
-  private async _fetch(apiPath: string, opts: RequestInit = {}) {
+  private async _fetch(apiPath: string, opts: any = {}) {
     const apiBase = this.apiBaseUrl
     const apiKey = this.apiKey
     const finalUrl = apiBase + apiPath
-    // typescript hacks, clean up when have too much time
-    const finalOpts: Options = {
-      ...(opts as any),
-      headers: {
-        ...(apiKey ? { 'X-API-KEY': apiKey } : {}),
-        ...((opts.headers as any) || {}),
-      },
-      throwHttpErrors: false
+
+    const headers: string[] = []
+    for (const key in opts?.headers ?? {}) {
+      headers.push(`${key}: ${opts.headers[key]}`)
+    }
+    if (apiKey) {
+      headers.push(`X-API-KEY: ${apiKey}`)
     }
 
-    this.logger(`Sending request: ${finalUrl} ${JSON.stringify(finalOpts).substr(0, 100)}...`)
-    // typescript stuff
-    const res: Response<string> = await this.got(finalUrl, finalOpts) as Response<string>  // typescript hax...
+    const fetchOpts: FetchOpts = {
+      method: opts.method === "GET" ? "GET" : "POST",
+      headers,
+      ...(opts.body != null ? { data: opts.body } : {})
+    }
+
+    this.logger(`Sending request: ${finalUrl} ${JSON.stringify(fetchOpts).substr(0, 100)}...`)
+    const res: Response = await this.proxyFetch(finalUrl, fetchOpts)
     return this._handleApiResponse(res)
     // return fetch(finalUrl, finalOpts).then(async res => this._handleApiResponse(res))
 
@@ -389,7 +402,7 @@ export class OpenSeaAPI {
     let result
     let errorMessage
     try {
-      result = response.body as string;  // typescript hax, can fail if passed in a buffer probs
+      result = response.data as string;  // typescript hax, can fail if passed in a buffer probs
       result = JSON.parse(result)
     } catch {
       // Result will be undefined or text

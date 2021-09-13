@@ -1,4 +1,4 @@
-import { OpenSeaAPIConfig, OpenSeaAsset, OpenSeaAssetBundle, OpenSeaAssetBundleQuery, OpenSeaAssetQuery, OpenSeaFungibleToken, OpenSeaFungibleTokenQuery, Order, OrderJSON, OrderQuery } from './types';
+import { FetchOpts, Response, OpenSeaAPIConfig, OpenSeaAsset, OpenSeaAssetBundle, OpenSeaAssetBundleQuery, OpenSeaAssetQuery, OpenSeaFungibleToken, OpenSeaFungibleTokenQuery, Order, OrderJSON, OrderQuery } from './types';
 export declare class OpenSeaAPI {
     /**
      * Host url for OpenSea
@@ -17,7 +17,7 @@ export declare class OpenSeaAPI {
      */
     logger: (arg: string) => void;
     private apiKey;
-    private got;
+    proxyFetch: (url: string, opts: FetchOpts) => Promise<Response>;
     /**
      * Create an instance of the OpenSea API
      * @param config OpenSeaAPIConfig for setting up the API, including an optional API key, network name, and base URL
@@ -128,7 +128,6 @@ export declare class OpenSeaAPI {
      * @param opts RequestInit opts, similar to Fetch API. If it contains
      *  a body, it won't be stringified.
      */
-    put(apiPath: string, body: object, opts?: RequestInit): Promise<any>;
     /**
      * Get from an API Endpoint, sending auth token in headers
      * @param apiPath Path to URL endpoint under API

@@ -102,7 +102,20 @@ export interface OpenSeaAPIConfig {
   apiBaseUrl?: string
   // Sent to WyvernJS
   gasPrice?: BigNumber
-  got?: Got
+  proxyFetch: (url: string, opts: FetchOpts) => Promise<Response>
+}
+
+export interface FetchOpts {
+  method: "GET" | "POST";
+  headers?: string[];
+  body?: any;
+  userAgent?: string;
+}
+
+export interface Response {
+  statusCode: number;
+  data: any;
+  headers: any;
 }
 
 /**

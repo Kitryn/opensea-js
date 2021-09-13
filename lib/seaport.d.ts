@@ -26,7 +26,7 @@ export declare class OpenSeaPort {
      * @param logger logger, optional, a function that will be called with debugging
      *  information
      */
-    constructor(provider: Web3.Provider, apiConfig?: OpenSeaAPIConfig, logger?: (arg: string) => void);
+    constructor(provider: Web3.Provider, apiConfig: OpenSeaAPIConfig, logger?: (arg: string) => void);
     /**
      * Add a listener to a marketplace event
      * @param event An event to listen for
